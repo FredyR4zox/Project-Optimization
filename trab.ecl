@@ -10,28 +10,37 @@ read_data_base(Tarefas) :- findall(T,tarefa(T,_,_,_),Tarefas).
 project_earliest_start :- read_data_base(Tasks),
 						length(Tasks,NTasks), length(OrderedTasks, NTasks),
 						max_days(Tasks, MaxW),
-						OrderedTasks::0..MaxW, Finish::0..MaxW,
+						OrderedTasks#::0..MaxW, Finish#::0..MaxW,
 						prec_constrs(Tasks,OrderedTasks,Finish),
-						minimize(labeling([Finish],Finish)).
+						writeln("Finish"),
+						minimize(labeling([Finish]),Finish),
+						writeln(Finish).
 
 /* Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores */
-project_minimize :- read_data_base(Tarefas),
-					verifica_prec(Tarefas, OrganizedSet).
+%project_minimize :- read_data_base(Tarefas).
 
-% restricoes de precedencia
+% restricoes de precedencia ADAPTAR PARA SELECIONA_VAR
 prec_constrs([],_,_).
-prec_constrs([T|RTarefas],Datas,Concl) :-
+prec_constrs([T|RTarefas],Datas,Finish) :-
 	tarefa(T,Di,LTSegs,_),
-	element(T,Datas,DataI),
+	seleccionar_vars(LTSegs,Datas,DataI),
     prec_constrs_(LTSegs,Datas,DataI,Di),
-    DataI+Di #=< Concl,
-    prec_constrs(RTarefas,Datas,Concl).
+    DataI+Di #=< Finish,
+    prec_constrs(RTarefas,Datas,Finish).
 
 prec_constrs_([],_,_,_).
 prec_constrs_([J|RTSegs],Datas,DataI,Di) :- 
-     element(J,Datas,DataJ),
+     seleciona_var(J,Datas,DataJ),
      DataI+Di #=< DataJ,
      prec_constrs_(RTSegs,Datas,DataI,Di).
+
+seleccionar_vars([],_,_,[]).
+seleccionar_vars([I|RDisc],Disciplinas,X,[Xi|XRDisc]) :-
+    selec_elemento(1,T,Disciplinas,I), selec_elemento(1,T,X,Xi),
+    seleccionar_vars(RDisc,Disciplinas,X,XRDisc).
+
+selec_elemento(T,T,[I|_],I) :- !.
+selec_elemento(T0,T,[_|R],I) :-  T0n is T0+1, selec_elemento(T0n,T,R,I).
 
 % soma duracao das tarefas
 max_days([],0).
