@@ -1,7 +1,18 @@
-tarefa(1,[2,3],20,10).
-tarefa(2,[3],20,5).
-tarefa(3,[4,5,6],3,0).
-tarefa(4,[5],4,1).
-tarefa(5,[],20,9).
-tarefa(6,[7],20,10).
-tarefa(7,[4],20,10).
+% 
+%  File: ex1
+%
+%  tarefa(ID,LPrecs,Dur,NTrabs)
+
+tarefa(1,[8,9],11,1).
+tarefa(2,[11],6,1).
+tarefa(3,[5,6,7],3,1).
+tarefa(4,[],15,1).
+tarefa(5,[10],9,1).
+tarefa(6,[8,9],1,1).
+tarefa(7,[12,13],2,1).
+tarefa(8,[10],5,1).
+tarefa(9,[],9,1).
+tarefa(10,[],2,1).
+tarefa(11,[8,9],6,1).
+tarefa(12,[11],1,1).
+tarefa(13,[10],4,1).
