@@ -1,11 +1,11 @@
 #include <cstdio>
 #include <vector>
 #include <queue>
-#include "TaskGraph.h"
+#include "Task.h"
 
 using namespace std;
 
-int CPM(int nTasks, vector<TaskGraph::Task*>& tasks){
+int CPM(int nTasks, vector<Task*>& tasks){
     int ES[nTasks+2], prec[nTasks+2], entStep[nTasks+2], minDur = -1, vf = 0;
     queue<int> q;
 
@@ -45,13 +45,13 @@ int CPM(int nTasks, vector<TaskGraph::Task*>& tasks){
 
 int main(){
     int id, nTasks, duration, numberOfPrecedings, preceding, nWorkers;
-    vector<TaskGraph::Task*> tasks;
+    vector<Task*> tasks;
 
     scanf("%d", &nTasks);
     tasks.resize(nTasks+2, NULL);
 
     for(int i=1; i<=nTasks; i++)
-        tasks[i] = new TaskGraph::Task();
+        tasks[i] = new Task();
 
     for(int i=0; i<nTasks; i++){
         scanf("%d %d", &id, &numberOfPrecedings);
@@ -69,10 +69,10 @@ int main(){
     }
 
 
-    TaskGraph::Task* start = new TaskGraph::Task();
+    Task* start = new Task();
     start->setID(0);
 
-    TaskGraph::Task* end = new TaskGraph::Task();
+    Task* end = new Task();
     end->setID(nTasks+1);
 
     for(int i=1; i<=nTasks; i++){
@@ -91,7 +91,7 @@ int main(){
 
     printf("minDur %d\n", CPM(nTasks, tasks));
 
-    for(TaskGraph::Task* t : tasks)
+    for(Task* t : tasks)
         delete t;
 
     return 0;
