@@ -14,21 +14,18 @@ project_minimize_workers - pesquisa para as atividades nao criticas de modo a mi
 % tarefa(ID,LPrecs,Dur,NTrabs)
 read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
 
-get_constraints(DurL,WorkL) :- findall(D,tarefa(_,_,D,_),DurationL),
-							findall(T,tarefa(_,_,_,T),WorkL).
-
 /* Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias */
 project_earliest_start :- read_data_base(Tasks),
 						length(Tasks,NTasks), length(ESTasksL, NTasks),
 						max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
 						prec_constrs(Tasks,ESTasksL,Finish),
 						minimize(labeling([Finish|ESTasksL]),Finish),
-						selec_elemento(1,1,ESTasksL,StartD),
 						build_index_list(Tasks,ESTasksL,IndexTasks),
 						quicksort(IndexTasks,OrderedTasks),
-						build_constraint_lists(OrderedTasks,DurL,WorkersL),
-						find_number_workers(StartD,OrderedTasks,DurL,WorkersL,WorkersL,WorkersN),
-						writeln(WorkersN).
+						build_constraint_list(OrderedTasks,FinishL),
+						quicksort(FinishL,OrderedFinish),
+						find_nworkers(OrderedTasks,OrderedFinish,0,WorkersN),
+						write_solution(Finish,WorkersN).
 
 /* Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores */
 project_minimize_workers :- read_data_base(Tasks),
@@ -41,9 +38,22 @@ project_minimize_workers :- read_data_base(Tasks),
 							cumulative(OrderedTasks,Duration,WorkersN,Workers),
 							writeln(Workers).
 
-
-find_number_workers([],[],[],[],0).
-find_number_workers(S,[(Di,T2)|LT],[D|DL],[W|WL],WL2,WorkersN). 
+find_nworkers([],[],0,0).
+find_nworkers([(_,T)|LT],[],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA + W, 
+												find_nworkers(LT,[], WorkersA2, WorkersN2),
+												WorkersN is max(WorkersN2,WorkersA2), !.
+find_nworkers([],[(_,T)|FL],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA - W, 
+												find_nworkers([],FL, WorkersA2, WorkersN2),
+												WorkersN is max(WorkersN2,WorkersA2), !.
+find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si < Fi, tarefa(T,_,_,W), WorkersA2 is WorkersA + W, 
+														find_nworkers(LT,[(Fi,T2)|FL], WorkersA2, WorkersN2),
+														WorkersN is max(WorkersN2,WorkersA2), !.
+find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si == Fi, tarefa(T,_,_,W), tarefa(T2,_,_,W2), WorkersA2 is WorkersA + W, WorkersA3 is WorkersA2 - W2,
+														find_nworkers(LT,FL, WorkersA3, WorkersN2),
+														WorkersN is max(WorkersN2,WorkersA3), !.  
+find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si > Fi, tarefa(T2,_,_,W), WorkersA2 is WorkersA - W,
+														find_nworkers([(Si,T)|LT],FL, WorkersA2, WorkersN2),  
+														WorkersN is max(WorkersN2,WorkersA2), !.  
 
 partition2([],[],_,[]).
 partition2([(Y,T2)|L2], L3, (X,T), [(Y,T2)|L]) :- Y =< X, partition2(L2,L3,(X,T),L), !.
@@ -56,8 +66,8 @@ quicksort([(X,T)|L],LR) :- partition2(LL,LH,(X,T),L), quicksort(LL,LR2), quickso
 build_index_list([],[],[]).
 build_index_list([T|LT],[Di|L],[(Di,T)|LR]) :- build_index_list(LT,L,LR).
 
-build_constraint_lists([],[],[]).
-build_constraint_lists([(_,T)|LR],[D|LD],[W|LW]) :- tarefa(T,_,D,W), build_constraint_lists(LR,LD,LW).
+build_constraint_list([],[]).
+build_constraint_list([(Di,T)|LR],[(F,T)|LD]) :- tarefa(T,_,D,_), F is Di+D, build_constraint_list(LR,LD).
 
 % precedence restrictions
 prec_constrs([],_,_).
