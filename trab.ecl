@@ -17,7 +17,7 @@ get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
 
 
 % Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias 
-earliest_start :- read_data_base(Tasks),
+project :- read_data_base(Tasks),
 				length(Tasks,NTasks), length(ESTasksL, NTasks),
 				max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
 				prec_constrs(Tasks,ESTasksL,Finish),
@@ -27,20 +27,21 @@ earliest_start :- read_data_base(Tasks),
 				build_constraint_list(OrderedTasks,FinishL),
 				quicksort(FinishL,OrderedFinish),
 				find_nworkers(OrderedTasks,OrderedFinish,0,WorkersN),
-				write_solution(Finish,WorkersN).
+				writeln("Solution for earliest start:"),
+				write_solution(Finish,WorkersN),
+				minimize_workers(WorkersN, MaxD).
 
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
-minimize_workers :- read_data_base(Tasks), get_constraints(DurationL,WorkersL),
-				max_workers(Tasks,MaxW), max_days(Tasks, MaxD),
-				length(Tasks,NTasks), length(ESTasksL, NTasks),
-				WorkersN#::0..MaxW, ESTasksL#::0..MaxD, Finish#::0..MaxD,
-				prec_constrs(Tasks,ESTasksL,Finish),
-				writeln(ESTasksL),writeln(Finish),
-				cumulative(ESTasksL,DurationL,WorkersL,WorkersN),
-				term_variables([Finish,ESTasksL,WorkersN], Vars),
-				minimize(labeling(Vars), WorkersN),
-				write_solution(Finish,WorkersN).
-
+minimize_workers(WorkersN, MaxD) :- writeln(""),
+								read_data_base(Tasks), get_constraints(DurationL,WorkersL),
+								length(Tasks,NTasks), length(ESTasksL, NTasks),
+								Workers#::0..WorkersN, ESTasksL#::0..MaxD, Finish#::0..MaxD,
+								prec_constrs(Tasks,ESTasksL,Finish),
+								minimize(labeling([Finish]), Finish),
+								cumulative(ESTasksL,DurationL,WorkersL,Workers),
+								minimize(labeling([Finish|ESTasksL]), Workers),
+								writeln("Solution to minimize workers: "),
+								write_solution(Finish,Workers).
 
 %Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of 
 %that, and when a task starts add the number of workers.
@@ -99,5 +100,5 @@ max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+
 max_workers([],0).
 max_workers([T|LTasks],Sum) :- tarefa(T,_,_,W), max_workers(LTasks,Sum2), Sum is Sum2+W.
 
-write_solution(Finish,Workers) :- write("Found a solution in "), write(Finish), write(" days, needing "), write(Workers),
+write_solution(Finish,Workers) :- write("Finishes in "), write(Finish), write(" days, and needs "), write(Workers),
 								writeln(" workers").
