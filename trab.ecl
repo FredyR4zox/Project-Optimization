@@ -6,8 +6,6 @@
 :- compile(base_dados).
 
 /* TODO:
-project_earliest_start - Calcular o numero de trabalahdores para o numero minimo de dias caclculado : Quando se calcula o numero de trabalhadores apenas analisar os dias em que as tarefas comecam ou acabam, e nao todos 
-os dias.
 project_minimize_workers - pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores. Usar cumulative(OrderedTasks,Durations,WorkersLimit,1000000).
 */
 
@@ -38,6 +36,8 @@ project_minimize_workers :- read_data_base(Tasks),
 							cumulative(OrderedTasks,Duration,WorkersN,Workers),
 							writeln(Workers).
 
+%Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of 
+%that, and when a task starts add the number of workers.
 find_nworkers([],[],0,0).
 find_nworkers([(_,T)|LT],[],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA + W, 
 												find_nworkers(LT,[], WorkersA2, WorkersN2),
@@ -48,10 +48,7 @@ find_nworkers([],[(_,T)|FL],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is 
 find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si < Fi, tarefa(T,_,_,W), WorkersA2 is WorkersA + W, 
 														find_nworkers(LT,[(Fi,T2)|FL], WorkersA2, WorkersN2),
 														WorkersN is max(WorkersN2,WorkersA2), !.
-find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si == Fi, tarefa(T,_,_,W), tarefa(T2,_,_,W2), WorkersA2 is WorkersA + W, WorkersA3 is WorkersA2 - W2,
-														find_nworkers(LT,FL, WorkersA3, WorkersN2),
-														WorkersN is max(WorkersN2,WorkersA3), !.  
-find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si > Fi, tarefa(T2,_,_,W), WorkersA2 is WorkersA - W,
+find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si >= Fi, tarefa(T2,_,_,W), WorkersA2 is WorkersA - W,
 														find_nworkers([(Si,T)|LT],FL, WorkersA2, WorkersN2),  
 														WorkersN is max(WorkersN2,WorkersA2), !.  
 
