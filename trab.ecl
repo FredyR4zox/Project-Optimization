@@ -28,6 +28,7 @@ project :- read_data_base(Tasks),
 				quicksort(FinishL,OrderedFinish),
 				find_nworkers(OrderedTasks,OrderedFinish,0,WorkersN),
 				writeln("Solution for earliest start:"),
+				writeln(ESTasksL),
 				write_solution(Finish,WorkersN),
 				minimize_workers(WorkersN, MaxD).
 
@@ -41,6 +42,7 @@ minimize_workers(WorkersN, MaxD) :- writeln(""),
 								cumulative(ESTasksL,DurationL,WorkersL,Workers),
 								minimize(labeling([Finish|ESTasksL]), Workers),
 								writeln("Solution to minimize workers: "),
+								writeln(ESTasksL),
 								write_solution(Finish,Workers).
 
 %Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of 
