@@ -12,29 +12,35 @@ project_minimize_workers - pesquisa para as atividades nao criticas de modo a mi
 % tarefa(ID,LPrecs,Dur,NTrabs)
 read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
 
-/* Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias */
-project_earliest_start :- read_data_base(Tasks),
-						length(Tasks,NTasks), length(ESTasksL, NTasks),
-						max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
-						prec_constrs(Tasks,ESTasksL,Finish),
-						minimize(labeling([Finish|ESTasksL]),Finish),
-						build_index_list(Tasks,ESTasksL,IndexTasks),
-						quicksort(IndexTasks,OrderedTasks),
-						build_constraint_list(OrderedTasks,FinishL),
-						quicksort(FinishL,OrderedFinish),
-						find_nworkers(OrderedTasks,OrderedFinish,0,WorkersN),
-						write_solution(Finish,WorkersN).
+get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
+									findall(W,tarefa(_,_,_,W),WorkersL).
 
-/* Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores */
-project_minimize_workers :- read_data_base(Tasks),
-							max_workers(Tasks,MaxW),
-							Workers#::0..MaxW,
-							length(Tasks,NTasks), length(OrderedTasks, NTasks),
-							max_days(Tasks, MaxD), 
-							OrderedTasks#::0..MaxD, Finish#::0..MaxD,
-							prec_constrs(Tasks,OrderedTasks,Finish),
-							cumulative(OrderedTasks,Duration,WorkersN,Workers),
-							writeln(Workers).
+
+% Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias 
+earliest_start :- read_data_base(Tasks),
+				length(Tasks,NTasks), length(ESTasksL, NTasks),
+				max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
+				prec_constrs(Tasks,ESTasksL,Finish),
+				minimize(labeling([Finish|ESTasksL]),Finish),
+				build_index_list(Tasks,ESTasksL,IndexTasks),
+				quicksort(IndexTasks,OrderedTasks),
+				build_constraint_list(OrderedTasks,FinishL),
+				quicksort(FinishL,OrderedFinish),
+				find_nworkers(OrderedTasks,OrderedFinish,0,WorkersN),
+				write_solution(Finish,WorkersN).
+
+% Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
+minimize_workers :- read_data_base(Tasks), get_constraints(DurationL,WorkersL),
+				max_workers(Tasks,MaxW), max_days(Tasks, MaxD),
+				length(Tasks,NTasks), length(ESTasksL, NTasks),
+				WorkersN#::0..MaxW, ESTasksL#::0..MaxD, Finish#::0..MaxD,
+				prec_constrs(Tasks,ESTasksL,Finish),
+				writeln(ESTasksL),writeln(Finish),
+				cumulative(ESTasksL,DurationL,WorkersL,WorkersN),
+				term_variables([Finish,ESTasksL,WorkersN], Vars),
+				minimize(labeling(Vars), WorkersN),
+				write_solution(Finish,WorkersN).
+
 
 %Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of 
 %that, and when a task starts add the number of workers.
