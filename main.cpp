@@ -6,13 +6,12 @@
 
 using namespace std;
 
-vector<int> CPM(vector<Task*>& tasks, int nTasks){
-    vector<int> ES = vector<int>(nTasks+2, 0);
-    int prec[nTasks+2], entStep[nTasks+2], minDur = -1, vf = 0;
+int CPM(Task* tasks[], int nTasks, int ES[], int prec[]){
+    int entStep[nTasks+2], minDur = -1, vf = 0;
     queue<int> q;
 
     for(int i=0; i<=nTasks+1; i++){
-        //ES[i] = 0;
+        ES[i] = 0;
         prec[i] = -1;
         entStep[i] = 0;
     }
@@ -28,8 +27,8 @@ vector<int> CPM(vector<Task*>& tasks, int nTasks){
         int v = q.front();
         q.pop();
 
-        // if(minDur < ES[v])
-        //     minDur=ES[v], vf = v;
+        if(minDur < ES[v])
+            minDur = ES[v], vf = v;
 
         vector<int> children = tasks[v]->getChildren();
         for(int w : children){
@@ -41,10 +40,10 @@ vector<int> CPM(vector<Task*>& tasks, int nTasks){
         }
     }
 
-    return ES;
+    return minDur;
 }
 
-int minWorkers(vector<Task*>& tasks, int nTasks, vector<int>& ES){
+int minWorkers(Task* tasks[], int nTasks, int ES[]){
     int nWorkers = 0, maxWorkers = 0;
 
     auto comp = [](const pair<int, int>& a, const pair<int, int>& b) -> bool {
@@ -76,16 +75,30 @@ int minWorkers(vector<Task*>& tasks, int nTasks, vector<int>& ES){
 }
 
 
+void calculateLS(Task* tasks[], int nTasks, int* ES, int* LS, int* prec){
+    for(int i=0; i<=nTasks+1; i++){
+        for(int j=0; j<=nTasks+1; j++){
+            if(prec[j] == i)
+                LS[i] = ES[j];
+        }
+
+        LS[i] = ES[prec[i]];
+    }
+}
+
 
 int main(){
-    int id, nTasks, duration, numberOfPrecedings, preceding, nWorkers;
-    vector<Task*> tasks;
+    int nTasks, id, duration, numberOfPrecedings, preceding, nWorkers;
 
     scanf("%d", &nTasks);
-    tasks.resize(nTasks+2, NULL);
+    Task* tasks[nTasks+2];
+    //tasks.resize(nTasks+2, NULL);
 
-    for(int i=1; i<=nTasks; i++)
+    for(int i=0; i<=nTasks+1; i++)
         tasks[i] = new Task();
+
+    tasks[0]->setID(0);
+    tasks[nTasks+1]->setID(nTasks+1);
 
     for(int i=0; i<nTasks; i++){
         scanf("%d %d", &id, &numberOfPrecedings);
@@ -102,35 +115,31 @@ int main(){
         tasks[id]->setNWorkers(nWorkers);
     }
 
-
-    Task* start = new Task();
-    start->setID(0);
-
-    Task* end = new Task();
-    end->setID(nTasks+1);
-
     for(int i=1; i<=nTasks; i++){
         if(tasks[i]->getNumberOfPrecedings() == 0){
-            start->addChildren(tasks[i]->getID());
+            tasks[0]->addChildren(tasks[i]->getID());
             tasks[i]->setNumberOfPrecedings(1);
         }
 
         if(tasks[i]->getChildren().size() == 0){
-            tasks[i]->addChildren(end->getID());
-            end->setNumberOfPrecedings(end->getNumberOfPrecedings()+1);
+            tasks[i]->addChildren(tasks[nTasks+1]->getID());
+            tasks[nTasks+1]->setNumberOfPrecedings(tasks[nTasks+1]->getNumberOfPrecedings()+1);
         }
     }
-    tasks[0] = start;
-    tasks[nTasks+1] = end;
 
-    vector<int> ES = CPM(tasks, nTasks);
+    int ES[nTasks+2], LS[nTasks+2], prec[nTasks+2];
+
+    int minDur = CPM(tasks, nTasks, ES, prec);
 //    vector<int> EF = ES;
 //   for(int i=0; i<=nTasks+1; i++)
 //        EF[i] = ES[i] + tasks[i]->getDuration();
 //        printf("ES[%d] = %d\n", i, ES[i]);
 
-    printf("minDur %d\n", ES[nTasks+1]);
+    printf("minDur %d %d\n", ES[nTasks+1], minDur);
     printf("minWorkers %d\n", minWorkers(tasks, nTasks, ES));
+
+    calculateLS(tasks, nTasks, ES, LS, prec);
+    branchAndBound(tasks, nTasks, ES, LS);
 
     for(Task* t : tasks)
         delete t;
@@ -138,3 +147,21 @@ int main(){
     return 0;
 }
 
+int branchAndBound(Task* tasks[], int nTasks, int* ES, int* LS){
+    //for()
+
+    return 0;
+}
+
+/*
+    Using a heuristic, find a solution xh to the optimization problem. Store its value, B = f(xh).
+    (If no heuristic is available, set B to infinity.) B will denote the best solution found so far, and will be used as an upper bound on candidate solutions.
+    Initialize a queue to hold a partial solution with none of the variables of the problem assigned.
+    Loop until the queue is empty:
+        Take a node N off the queue.
+        If N represents a single candidate solution x and f(x) < B, then x is the best solution so far. Record it and set B ← f(x).
+        Else, branch on N to produce new nodes Ni. For each of these:
+            If bound(Ni) > B, do nothing; since the lower bound on this node is greater than the upper bound of the problem, it will never lead to the
+            optimal solution, and can be discarded.
+            Else, store Ni on the queue.
+*/
