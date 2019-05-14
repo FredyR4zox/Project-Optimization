@@ -36,7 +36,7 @@ minimize_workers(WorkersN, MaxD) :- writeln(""),
 						prec_constrs(Tasks,ESTasksL,Finish),
 						minimize(labeling([Finish]), Finish),
 						cumulative(ESTasksL,DurationL,WorkersL,Workers),
-						minimize(labeling([Finish|ESTasksL]), Workers),
+						minimize(labeling([Workers|ESTasksL]), Workers),
 						writeln("Solution to minimize workers: "),
 						writeln(ESTasksL),
 						write_solution(Finish,Workers).
