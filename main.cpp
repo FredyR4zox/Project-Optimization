@@ -43,7 +43,7 @@ int CPM(Task* tasks[], int nTasks, int ES[], int prec[]){
     return minDur;
 }
 
-int minWorkers(Task* tasks[], int nTasks, int ES[]){
+int minWorkers(Task* tasks[], int nTasks, int* ES){
     int nWorkers = 0, maxWorkers = 0;
 
     auto comp = [](const pair<int, int>& a, const pair<int, int>& b) -> bool {
@@ -81,8 +81,6 @@ void calculateLS(Task* tasks[], int nTasks, int* ES, int* LS, int* prec){
             if(prec[j] == i)
                 LS[i] = ES[j];
         }
-
-        LS[i] = ES[prec[i]];
     }
 }
 
@@ -127,7 +125,7 @@ int main(){
         }
     }
 
-    int ES[nTasks+2], LS[nTasks+2], prec[nTasks+2];
+    int ES[nTasks+2], LS[nTasks+2], prec[nTasks+2], start[nTasks+2];
 
     int minDur = CPM(tasks, nTasks, ES, prec);
 //    vector<int> EF = ES;
@@ -138,8 +136,11 @@ int main(){
     printf("minDur %d %d\n", ES[nTasks+1], minDur);
     printf("minWorkers %d\n", minWorkers(tasks, nTasks, ES));
 
+    for(int i=0; i<=nTasks+1; i++)
+        LS[i] = ES[i];
+
     calculateLS(tasks, nTasks, ES, LS, prec);
-    branchAndBound(tasks, nTasks, ES, LS);
+    branchAndBound(tasks, nTasks, ES, LS, start, prec);
 
     for(Task* t : tasks)
         delete t;
@@ -147,8 +148,35 @@ int main(){
     return 0;
 }
 
-int branchAndBound(Task* tasks[], int nTasks, int* ES, int* LS){
-    //for()
+int branchAndBound(Task* tasks[], int nTasks, int* ES, int* LS, int* start, int* prec, int bestNWorkers){
+    int entStep[nTasks+2];
+    queue<int> q;
+
+    for(int i=0; i<=nTasks+1; i++)
+        entStep[i] = tasks[i]->getChildren().size();
+
+    for(int i=0; i<=nTasks+1; i++)
+        if(entStep[i] == 0)
+            q.push(i);
+
+    while(!q.empty()){
+        int v = q.front();
+        q.pop();
+
+        if(minDur < ES[v])
+            minDur = ES[v], vf = v;
+
+        vector<int> children = tasks[v]->getChildren();
+        for(int w : children){
+            if(ES[w] < ES[v] + tasks[v]->getDuration())
+                ES[w] = ES[v] + tasks[v]->getDuration(), prec[w] = v;
+            entStep[w]--;
+            if(entStep[w] == 0)
+                q.push(w);
+        }
+    }
+
+    return minDur;
 
     return 0;
 }
