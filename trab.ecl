@@ -31,13 +31,14 @@ project :- read_data_base(Tasks),
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
 minimize_workers(WorkersN, MaxD, Finish) :- writeln(""),
 						read_data_base(Tasks), get_constraints(DurationL,WorkersL),
-						length(Tasks,NTasks), length(ESTasksL, NTasks),
-						Workers#::0..WorkersN, ESTasksL#::0..MaxD, Finish#::0..MaxD,
-						prec_constrs(Tasks,ESTasksL,Finish),
-						cumulative(ESTasksL,DurationL,WorkersL,Workers),
-						minimize(search(ESTasksL,0,first_fail,indomain,complete,[]), Workers),
+						length(Tasks,NTasks), length(STasksL, NTasks),
+						Workers#::0..WorkersN, STasksL#::0..MaxD, Finish#::0..MaxD,
+						prec_constrs(Tasks,STasksL,Finish),
+						cumulative(STasksL,DurationL,WorkersL,Workers),
+						labeling([Workers]),
+						minimize(search(STasksL,0,first_fail,indomain,complete,[]), Workers),
 						writeln("Solution to minimize workers: "),
-						writeln(ESTasksL),
+						writeln(STasksL),
 						write_solution(Finish,Workers).
 
 %Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of
