@@ -26,17 +26,16 @@ project :- read_data_base(Tasks),
 	writeln("Solution for earliest start:"),
 	writeln(ESTasksL),
 	write_solution(Finish,WorkersN),
-	minimize_workers(WorkersN, MaxD).
+	minimize_workers(WorkersN, MaxD, Finish).
 
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
-minimize_workers(WorkersN, MaxD) :- writeln(""),
+minimize_workers(WorkersN, MaxD, Finish) :- writeln(""),
 						read_data_base(Tasks), get_constraints(DurationL,WorkersL),
 						length(Tasks,NTasks), length(ESTasksL, NTasks),
 						Workers#::0..WorkersN, ESTasksL#::0..MaxD, Finish#::0..MaxD,
 						prec_constrs(Tasks,ESTasksL,Finish),
-						minimize(labeling([Finish]), Finish),
 						cumulative(ESTasksL,DurationL,WorkersL,Workers),
-						minimize(labeling([Workers|ESTasksL]), Workers),
+						minimize(search(ESTasksL,0,first_fail,indomain,complete,[]), Workers),
 						writeln("Solution to minimize workers: "),
 						writeln(ESTasksL),
 						write_solution(Finish,Workers).
