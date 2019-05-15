@@ -2,6 +2,7 @@
 #include <vector>
 #include <queue>
 #include <set>
+#include <algorithm>
 #include "Task.h"
 
 using namespace std;
@@ -12,9 +13,10 @@ int CPM(Task* tasks[], int nTasks, int ES[], int prec[]){
 
     for(int i=0; i<=nTasks+1; i++){
         ES[i] = 0;
-        prec[i] = -1;
+        prec[i] = 0;
         entStep[i] = 0;
     }
+    prec[nTasks+1] = -1;
 
     for(int i=0; i<=nTasks+1; i++)
         entStep[i] = tasks[i]->getNumberOfPrecedings();
@@ -77,10 +79,58 @@ int minWorkers(Task* tasks[], int nTasks, int* ES){
 
 void calculateLS(Task* tasks[], int nTasks, int* ES, int* LS, int* prec){
     for(int i=0; i<=nTasks+1; i++){
-        for(int j=0; j<=nTasks+1; j++){
+        LS[i] = ES[i];
+        for(int j=0; j<=nTasks+1; j++)
             if(prec[j] == i)
                 LS[i] = ES[j];
+    }
+}
+
+void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, int* prec, vector<int> entStep, int* start, queue<int> q, int* bestStart, int* bestNWorkers){
+    for(int i=0; i<=nTasks+1; i++){
+        vector<int> c = tasks[i]->getChildren();
+        if(find(c.begin(), c.end(), task) != c.end()){
+            //printf("found %d in childrens %d\n", task, i);
+            entStep[i]--;
+            //printf("entStep %d\n", entStep[i]);
+            if(entStep[i] == 0){
+                //printf("push %d\n", i);
+                q.push(i);
+            }
         }
+    }
+
+    if(q.empty()){
+        for(int i=ES[task]; i<=LS[task]; i++){
+            start[task] = i;
+            printf("[");
+            for(int j=0; j<nTasks+1; j++)
+                printf("%d, ", start[j]);
+            printf("%d]\n", start[nTasks+1]);
+            int minW = minWorkers(tasks, nTasks, start);
+            if(minW < *bestNWorkers){
+                *bestNWorkers = minW;
+                for(int j=0; j<=nTasks+1; j++)
+                    bestStart[j] = start[j];
+            }
+        }
+
+        return;
+    }
+
+    int v = q.front(), min = ES[nTasks+1];
+    q.pop();
+
+    vector<int> children = tasks[task]->getChildren();
+    for(int id : children)
+        if(min > start[id])
+            min = start[id];
+
+    //printf("analizing %d\n", task);
+    //printf("v = %d\n", v);
+    for(int i=ES[task]; i<=min; i++){
+        start[task] = i;
+        DFS(tasks, nTasks, v, ES, LS, prec, entStep, start, q, bestStart, bestNWorkers);
     }
 }
 
@@ -125,6 +175,16 @@ int main(){
         }
     }
 
+    /*
+    for(int i=0; i<=nTasks+1; i++){
+        printf("children of %d\n", i);
+        vector<int> children = tasks[i]->getChildren();
+        for(int j=0; j<children.size(); j++)
+            printf("\t %d", children[j]);
+        printf("\n");
+    }
+    */
+
     int ES[nTasks+2], LS[nTasks+2], prec[nTasks+2], start[nTasks+2];
 
     int minDur = CPM(tasks, nTasks, ES, prec);
@@ -136,11 +196,26 @@ int main(){
     printf("minDur %d %d\n", ES[nTasks+1], minDur);
     printf("minWorkers %d\n", minWorkers(tasks, nTasks, ES));
 
-    for(int i=0; i<=nTasks+1; i++)
-        LS[i] = ES[i];
-
     calculateLS(tasks, nTasks, ES, LS, prec);
-    branchAndBound(tasks, nTasks, ES, LS, start, prec);
+
+
+    int bestStart[nTasks+2], bestNWorkers;
+    vector<int> entStep;
+    //entStep.reserve(nTasks+2);
+
+    queue<int> q;
+    for(int i=0; i<=nTasks+1; i++){
+        entStep.push_back(tasks[i]->getChildren().size());
+        if(entStep[i] == 0)
+            q.push(i);
+    }
+
+    int task = q.front();
+    q.pop();
+
+    DFS(tasks, nTasks, task, ES, LS, prec, entStep, start, q, bestStart, &bestNWorkers);
+
+    printf("%d\n", bestNWorkers);
 
     for(Task* t : tasks)
         delete t;
@@ -148,48 +223,3 @@ int main(){
     return 0;
 }
 
-int branchAndBound(Task* tasks[], int nTasks, int* ES, int* LS, int* start, int* prec, int bestNWorkers){
-    int entStep[nTasks+2];
-    queue<int> q;
-
-    for(int i=0; i<=nTasks+1; i++)
-        entStep[i] = tasks[i]->getChildren().size();
-
-    for(int i=0; i<=nTasks+1; i++)
-        if(entStep[i] == 0)
-            q.push(i);
-
-    while(!q.empty()){
-        int v = q.front();
-        q.pop();
-
-        if(minDur < ES[v])
-            minDur = ES[v], vf = v;
-
-        vector<int> children = tasks[v]->getChildren();
-        for(int w : children){
-            if(ES[w] < ES[v] + tasks[v]->getDuration())
-                ES[w] = ES[v] + tasks[v]->getDuration(), prec[w] = v;
-            entStep[w]--;
-            if(entStep[w] == 0)
-                q.push(w);
-        }
-    }
-
-    return minDur;
-
-    return 0;
-}
-
-/*
-    Using a heuristic, find a solution xh to the optimization problem. Store its value, B = f(xh).
-    (If no heuristic is available, set B to infinity.) B will denote the best solution found so far, and will be used as an upper bound on candidate solutions.
-    Initialize a queue to hold a partial solution with none of the variables of the problem assigned.
-    Loop until the queue is empty:
-        Take a node N off the queue.
-        If N represents a single candidate solution x and f(x) < B, then x is the best solution so far. Record it and set B ← f(x).
-        Else, branch on N to produce new nodes Ni. For each of these:
-            If bound(Ni) > B, do nothing; since the lower bound on this node is greater than the upper bound of the problem, it will never lead to the
-            optimal solution, and can be discarded.
-            Else, store Ni on the queue.
-*/

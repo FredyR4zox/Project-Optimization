@@ -12,7 +12,7 @@ get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
 							findall(W,tarefa(_,_,_,W),WorkersL).
 
 
-% Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias 
+% Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias
 project :- read_data_base(Tasks),
 	length(Tasks,NTasks), length(ESTasksL, NTasks),
 	max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
@@ -40,30 +40,30 @@ minimize_workers(WorkersN, MaxD, Finish) :- writeln(""),
 						writeln(ESTasksL),
 						write_solution(Finish,Workers).
 
-%Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of 
+%Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of
 %that, and when a task starts add the number of workers.
 find_nworkers([],[],0,0).
-find_nworkers([(_,T)|LT],[],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA + W, 
+find_nworkers([(_,T)|LT],[],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA + W,
 										find_nworkers(LT,[], WorkersA2, WorkersN2),
 										WorkersN is max(WorkersN2,WorkersA2), !.
-find_nworkers([],[(_,T)|FL],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA - W, 
+find_nworkers([],[(_,T)|FL],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is WorkersA - W,
 										find_nworkers([],FL, WorkersA2, WorkersN2),
 										WorkersN is max(WorkersN2,WorkersA2), !.
-find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si < Fi, tarefa(T,_,_,W), WorkersA2 is WorkersA + W, 
+find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si < Fi, tarefa(T,_,_,W), WorkersA2 is WorkersA + W,
 												find_nworkers(LT,[(Fi,T2)|FL], WorkersA2, WorkersN2),
 												WorkersN is max(WorkersN2,WorkersA2), !.
 find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si >= Fi, tarefa(T2,_,_,W), WorkersA2 is WorkersA - W,
-												find_nworkers([(Si,T)|LT],FL, WorkersA2, WorkersN2),  
-												WorkersN is max(WorkersN2,WorkersA2), !.  
+												find_nworkers([(Si,T)|LT],FL, WorkersA2, WorkersN2),
+												WorkersN is max(WorkersN2,WorkersA2), !.
 
 partition2([],[],_,[]).
 partition2([(Y,T2)|L2], L3, (X,T), [(Y,T2)|L]) :- Y =< X, partition2(L2,L3,(X,T),L), !.
 partition2(L2, [(Y,T2)|L3], (X,T), [(Y,T2)|L]) :- Y > X,  partition2(L2,L3,(X,T),L), !.
 
 quicksort([],[]).
-quicksort([(X,T)|L],LR) :- partition2(LL,LH,(X,T),L), quicksort(LL,LR2), quicksort(LH,LR3), 
-					  append(LR2,[(X,T)|LR3], LR), !. 
-												
+quicksort([(X,T)|L],LR) :- partition2(LL,LH,(X,T),L), quicksort(LL,LR2), quicksort(LH,LR3),
+					  append(LR2,[(X,T)|LR3], LR), !.
+
 build_index_list([],[],[]).
 build_index_list([T|LT],[Di|L],[(Di,T)|LR]) :- build_index_list(LT,L,LR).
 
