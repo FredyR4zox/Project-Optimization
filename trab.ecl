@@ -13,33 +13,52 @@ get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
 
 
 % Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias
-project :- read_data_base(Tasks),
-	length(Tasks,NTasks), length(ESTasksL, NTasks),
-	max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
-	prec_constrs(Tasks,ESTasksL,Finish),
-	minimize(labeling([Finish|ESTasksL]),Finish),
-	build_index_list(Tasks,ESTasksL,IndexTasks),
-	quicksort(IndexTasks,OrderedTasks),
-	build_constraint_list(OrderedTasks,FinishL),
-	quicksort(FinishL,OrderedFinish),
+project :- read_data_base(Tasks), sort(Tasks, OTasks),
+	get_constraints(DurationL,WorkersL),
+	get_min_days(OTasks,ESTasksL,Finish),	
+	write("Number of days: "), writeln(Finish),
+	order_information(OTasks,ESTasksL,OrderedTasks,OrderedFinish),
 	find_nworkers(OrderedTasks,OrderedFinish,0,WorkersN),
-	writeln("Solution for earliest start:"),
-	writeln(ESTasksL),
-	write_solution(Finish,WorkersN),
-	minimize_workers(WorkersN, MaxD, Finish).
+	write("Number of Workers for ES: "), writeln(WorkersN),
+	writeln("Start Times for ES: "), print_times(ESTasksL), nl,
+	length(OTasks,NTasks), length(STasksL, NTasks),
+	STasksL#::0..Finish,
+	prec_constrs(OTasks,STasksL,Finish),
+	get_critical_tasks(1, STasksL, CritTasks),
+	get_critical_workers(CritTasks, WorkersCrit),
+	write("Number of Workers for crit: "), writeln(WorkersCrit),
+	minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin),
+	write("Min number of Workers: "), writeln(WorkersMin), nl,
+	writeln("Start Times for Min Workers: "), print_times(STasksL).
+	%counts(Tasks,DurationL,WorkersL, Finish, WorkersMin, X),
+	%((X > 1, writeln("Existem solucoes alternativas")) ; writeln("Solucao unica")).
+
+print_times([]) :- nl.
+print_times([Xi|L]) :- write(Xi), write(" "), print_times(L).
+
+counts(Tasks,DurationL,WorkersL, Finish, WorkersMin,Count) :- 
+	length(Tasks,NTasks), length(STasksL, NTasks),
+	STasksL#::0..Finish,
+	prec_constrs(Tasks,STasksL,Finish),
+	cumulative(STasksL,DurationL, WorkersL, WorkersMin),
+	findall(STasksL,search(STasksL,0,first_fail,indomain_min,complete,[]),L), 
+	length(L,Count), writeln(Count), !.
 
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
-minimize_workers(WorkersN, MaxD, Finish) :- writeln(""),
-						read_data_base(Tasks), get_constraints(DurationL,WorkersL),
-						length(Tasks,NTasks), length(STasksL, NTasks),
-						Workers#::0..WorkersN, STasksL#::0..MaxD, Finish#::0..MaxD,
-						prec_constrs(Tasks,STasksL,Finish),
-						cumulative(STasksL,DurationL,WorkersL,Workers),
-						labeling([Workers]),
-						minimize(search(STasksL,0,first_fail,indomain,complete,[]), Workers),
-						writeln("Solution to minimize workers: "),
-						writeln(STasksL),
-						write_solution(Finish,Workers).
+minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
+	WorkersMin#::WorkersCrit..WorkersN,
+	cumulative(STasksL,DurationL,WorkersL,WorkersMin),	
+	minimize(search([WorkersMin|STasksL],0,first_fail,indomain_min,complete,[]), WorkersMin).
+
+get_critical_workers(CritTasks, WorkersCrit) :-
+	quicksort(CritTasks,OrderedTasks),
+	build_constraint_list(OrderedTasks,FinishL),
+	quicksort(FinishL,OrderedFinish),
+	find_nworkers(OrderedTasks,OrderedFinish,0,WorkersCrit).
+
+get_critical_tasks(_,[],[]).
+get_critical_tasks(T, [Xi|L], [(Xi,T)|CritTasksL]) :- get_bounds(Xi,LB,UB), LB=UB, T2 is T + 1, get_critical_tasks(T2,L,CritTasksL), !.
+get_critical_tasks(T, [Xi|L], CritTasksL) :- get_bounds(Xi,LB,UB), not(LB=UB), T2 is T + 1, get_critical_tasks(T2,L,CritTasksL), !.
 
 %Iterates throw the ordered lists of start and finish times of each task, and each time a task finishs just remove the number of workers needed of
 %that, and when a task starts add the number of workers.
@@ -51,11 +70,11 @@ find_nworkers([],[(_,T)|FL],WorkersA,WorkersN) :- tarefa(T,_,_,W), WorkersA2 is 
 										find_nworkers([],FL, WorkersA2, WorkersN2),
 										WorkersN is max(WorkersN2,WorkersA2), !.
 find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si < Fi, tarefa(T,_,_,W), WorkersA2 is WorkersA + W,
-												find_nworkers(LT,[(Fi,T2)|FL], WorkersA2, WorkersN2),
-												WorkersN is max(WorkersN2,WorkersA2), !.
+										find_nworkers(LT,[(Fi,T2)|FL], WorkersA2, WorkersN2),
+										WorkersN is max(WorkersN2,WorkersA2), !.
 find_nworkers([(Si,T)|LT],[(Fi,T2)|FL],WorkersA,WorkersN) :- Si >= Fi, tarefa(T2,_,_,W), WorkersA2 is WorkersA - W,
-												find_nworkers([(Si,T)|LT],FL, WorkersA2, WorkersN2),
-												WorkersN is max(WorkersN2,WorkersA2), !.
+										find_nworkers([(Si,T)|LT],FL, WorkersA2, WorkersN2),
+										WorkersN is max(WorkersN2,WorkersA2), !.
 
 partition2([],[],_,[]).
 partition2([(Y,T2)|L2], L3, (X,T), [(Y,T2)|L]) :- Y =< X, partition2(L2,L3,(X,T),L), !.
@@ -64,6 +83,19 @@ partition2(L2, [(Y,T2)|L3], (X,T), [(Y,T2)|L]) :- Y > X,  partition2(L2,L3,(X,T)
 quicksort([],[]).
 quicksort([(X,T)|L],LR) :- partition2(LL,LH,(X,T),L), quicksort(LL,LR2), quicksort(LH,LR3),
 					  append(LR2,[(X,T)|LR3], LR), !.
+
+order_information(Tasks,ESTasksL,OrderedTasks,OrderedFinish) :-
+	build_index_list(Tasks,ESTasksL,IndexTasks),
+	quicksort(IndexTasks,OrderedTasks),
+	build_constraint_list(OrderedTasks,FinishL),
+	quicksort(FinishL,OrderedFinish).
+
+get_min_days(Tasks,ESTasksL,Finish) :- 
+	length(Tasks,NTasks), length(ESTasksL, NTasks),
+	max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
+	prec_constrs(Tasks,ESTasksL,Finish),
+	minimize(labeling([Finish|ESTasksL]),Finish).
+
 
 build_index_list([],[],[]).
 build_index_list([T|LT],[Di|L],[(Di,T)|LR]) :- build_index_list(LT,L,LR).
@@ -97,6 +129,3 @@ max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+
 %finds the workers upper bound
 max_workers([],0).
 max_workers([T|LTasks],Sum) :- tarefa(T,_,_,W), max_workers(LTasks,Sum2), Sum is Sum2+W.
-
-write_solution(Finish,Workers) :- write("Finishes in "), write(Finish), write(" days, and needs "), write(Workers),
-						writeln(" workers").
