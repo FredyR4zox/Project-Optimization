@@ -46,7 +46,8 @@ find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
 	search(CTasks,0,first_fail,indomain_min,complete,[]).
 
 make_different([],[]).
-make_different([Xi|L], [Xi2|OtherL]) :- ((Xi#\=Xi2, !); make_different(L,OtherL), !).
+make_different([Xi|L], [_|OtherL]) :- get_bounds(Xi, LB, UB), LB=UB, make_different(L,OtherL).
+make_different([Xi|L], [Xi2|OtherL]) :- get_bounds(Xi, LB, UB), not(LB=UB), ((Xi#\=Xi2, !); make_different(L,OtherL), !).
 
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
 minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
