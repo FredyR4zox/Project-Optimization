@@ -11,7 +11,6 @@ read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
 get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
 							findall(W,tarefa(_,_,_,W),WorkersL).
 
-
 % Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias
 project :- read_data_base(Tasks), sort(Tasks, OTasks),
 	get_constraints(DurationL,WorkersL),
@@ -29,20 +28,25 @@ project :- read_data_base(Tasks), sort(Tasks, OTasks),
 	write("Number of Workers for crit: "), writeln(WorkersCrit),
 	minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin),
 	write("Min number of Workers: "), writeln(WorkersMin), nl,
-	writeln("Start Times for Min Workers: "), print_times(STasksL).
-	%counts(Tasks,DurationL,WorkersL, Finish, WorkersMin, X),
-	%((X > 1, writeln("Existem solucoes alternativas")) ; writeln("Solucao unica")).
+	writeln("Start Times for Min Workers: "), print_times(STasksL),
+	%findall(X, find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, X), Count),
+	%length(C, Count)
+	(find_another_sol(OTasks,DurationL,WorkersL, Finish, WorkersMin, STasksL), writeln("Existem solucoes alternativas"), !;
+	writeln("Solucao unica")).
 
 print_times([]) :- nl.
 print_times([Xi|L]) :- write(Xi), write(" "), print_times(L).
 
-counts(Tasks,DurationL,WorkersL, Finish, WorkersMin,Count) :- 
-	length(Tasks,NTasks), length(STasksL, NTasks),
-	STasksL#::0..Finish,
-	prec_constrs(Tasks,STasksL,Finish),
-	cumulative(STasksL,DurationL, WorkersL, WorkersMin),
-	findall(STasksL,search(STasksL,0,first_fail,indomain_min,complete,[]),L), 
-	length(L,Count), writeln(Count), !.
+find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
+	length(Tasks,NTasks), length(CTasks, NTasks),
+	CTasks#::0..Finish,
+	prec_constrs(Tasks,CTasks,Finish),
+	cumulative(CTasks,DurationL, WorkersL, WorkersMin),
+	make_different(CTasks,STasksL),
+	search(CTasks,0,first_fail,indomain_min,complete,[]).
+
+make_different([],[]).
+make_different([Xi|L], [Xi2|OtherL]) :- ((Xi#\=Xi2, !); make_different(L,OtherL), !).
 
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
 minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
@@ -95,7 +99,6 @@ get_min_days(Tasks,ESTasksL,Finish) :-
 	max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
 	prec_constrs(Tasks,ESTasksL,Finish),
 	minimize(labeling([Finish|ESTasksL]),Finish).
-
 
 build_index_list([],[],[]).
 build_index_list([T|LT],[Di|L],[(Di,T)|LR]) :- build_index_list(LT,L,LR).
