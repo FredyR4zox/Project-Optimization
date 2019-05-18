@@ -3,6 +3,19 @@
 :- lib(branch_and_bound).
 :- lib(edge_finder).
 
+% tarefa(ID,LPrecs,Dur,NTrabs)
+read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
+
+get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
+							findall(W,tarefa(_,_,_,W),WorkersL).
+
+%finds the days upper bound
+max_days([],0).
+max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+D.
+
+print_times([]) :- nl.
+print_times([Xi|L]) :- write(Xi), write(" "), print_times(L).
+
 % Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias
 project(File) :- 
 	compile(File), 
@@ -28,18 +41,11 @@ project(File) :-
 	(find_another_sol(OTasks,DurationL,WorkersL, Finish, WorkersMin, STasksL), writeln("Existem solucoes alternativas"), !;
 	writeln("Solucao unica")).
 
-% tarefa(ID,LPrecs,Dur,NTrabs)
-read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
-
-get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
-							findall(W,tarefa(_,_,_,W),WorkersL).
-
-%finds the days upper bound
-max_days([],0).
-max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+D.
-
-print_times([]) :- nl.
-print_times([Xi|L]) :- write(Xi), write(" "), print_times(L).
+% Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
+minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
+	WorkersMin#::WorkersCrit..WorkersN,
+	cumulative(STasksL,DurationL,WorkersL,WorkersMin),	
+	minimize(search([WorkersMin|STasksL],0,first_fail,indomain_min,complete,[]), WorkersMin).
 
 find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
 	length(Tasks,NTasks), length(CTasks, NTasks),
@@ -47,18 +53,11 @@ find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
 	prec_constrs(Tasks,CTasks,Finish),
 	cumulative(CTasks,DurationL, WorkersL, WorkersMin),
 	make_different(CTasks,STasksL),
-	search(CTasks,0,first_fail,indomain_min,complete,[]),
-	writeln(CTasks).
+	search(CTasks,0,first_fail,indomain_min,complete,[]).
 
 make_different([],[]).
 make_different([Xi|L], [_|OtherL]) :- get_bounds(Xi, LB, UB), LB=UB, make_different(L,OtherL).
 make_different([Xi|L], [Xi2|OtherL]) :- get_bounds(Xi, LB, UB), not(LB=UB), ((Xi#\=Xi2, !); make_different(L,OtherL), !).
-
-% Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
-minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
-	WorkersMin#::WorkersCrit..WorkersN,
-	cumulative(STasksL,DurationL,WorkersL,WorkersMin),	
-	minimize(search([WorkersMin|STasksL],0,first_fail,indomain_min,complete,[]), WorkersMin).
 
 get_critical_workers(CritTasks, WorkersCrit) :-
 	quicksort(CritTasks,OrderedTasks),
