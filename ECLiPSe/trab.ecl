@@ -1,7 +1,6 @@
 :- lib(ic).
-:- lib(ic_global).
+:- lib(ic_cumulative).
 :- lib(branch_and_bound).
-:- lib(edge_finder).
 
 % tarefa(ID,LPrecs,Dur,NTrabs)
 read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
@@ -44,7 +43,7 @@ project(File) :-
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
 minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
 	WorkersMin#::WorkersCrit..WorkersN,
-	cumulative(STasksL,DurationL,WorkersL,WorkersMin),	
+	cumulative(STasksL,DurationL,WorkersL,WorkersMin),
 	minimize(search([WorkersMin|STasksL],0,first_fail,indomain_min,complete,[]), WorkersMin).
 
 find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
@@ -103,7 +102,7 @@ get_min_days(Tasks,ESTasksL,Finish) :-
 	length(Tasks,NTasks), length(ESTasksL, NTasks),
 	max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
 	prec_constrs(Tasks,ESTasksL,Finish),
-	minimize(labeling([Finish|ESTasksL]),Finish).
+	branch_and_bound:minimize(labeling([Finish|ESTasksL]),Finish).
 
 build_index_list([],[],[]).
 build_index_list([T|LT],[Di|L],[(Di,T)|LR]) :- build_index_list(LT,L,LR).

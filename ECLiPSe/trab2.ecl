@@ -3,25 +3,28 @@
 :- lib(branch_and_bound).
 :- lib(edge_finder).
 
-get_Tasks(Tasks) :- findall(T,tarefa(T,_,_,_,0),Tasks).
+get_Tasks(Tasks) :- findall(T,tarefa(T,_,_,_,_),Tasks).
 
 project2(File) :-
 	compile(File),
 	get_Tasks(Tasks), sort(Tasks,OTasks),
-    prazo(FinishDate),
-    length(Tasks,NTasks), length(SDates, NTasks),
-    SDates#::0..FinishDate,
+    calendario(Calend),
+    build_list_days(1,DaysL,Calend),
+    max_days(OTasks, Finish), length(Tasks,NTasks), 
+    length(SDates, NTasks), SDates#::0..Finish,
     prec_constrs(OTasks,SDates,FinishDate),
     interval_constrs(OTasks,SDates),
+    prazo(FinishDate),
     writeln(SDates).
+
+max_days([],0).
+max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+D.
 
 interval_constrs([],_).
 interval_constrs([T|RTarefas],Datas) :-
     findall((PrevT,Min,Max), intervalo(T,PrevT,Min,Max), IntL),
     selec_elemento(1,T,Datas,DataI),
-    writeln("here3"),
     interval_constrs_(IntL,Datas,DataI),
-    writeln("here2"),
     interval_constrs(RTarefas,Datas).
 
 interval_constrs_([],_,_).

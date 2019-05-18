@@ -15,3 +15,5 @@ tarefa(13,[10],4,1,0).
 intervalo(10,13,5,6).
 
 prazo(21).
+
+calendario([d(DiaMes,Mes,DiaSemana)])
