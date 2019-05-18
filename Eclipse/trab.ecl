@@ -3,16 +3,10 @@
 :- lib(branch_and_bound).
 :- lib(edge_finder).
 
-:- compile(base_dados).
-
-% tarefa(ID,LPrecs,Dur,NTrabs)
-read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
-
-get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
-							findall(W,tarefa(_,_,_,W),WorkersL).
-
 % Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias
-project :- read_data_base(Tasks), sort(Tasks, OTasks),
+project(File) :- 
+	compile(File), 
+	read_data_base(Tasks), sort(Tasks, OTasks),
 	get_constraints(DurationL,WorkersL),
 	get_min_days(OTasks,ESTasksL,Finish),	
 	write("Number of days: "), writeln(Finish),
@@ -34,6 +28,16 @@ project :- read_data_base(Tasks), sort(Tasks, OTasks),
 	(find_another_sol(OTasks,DurationL,WorkersL, Finish, WorkersMin, STasksL), writeln("Existem solucoes alternativas"), !;
 	writeln("Solucao unica")).
 
+% tarefa(ID,LPrecs,Dur,NTrabs)
+read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
+
+get_constraints(DurationL, WorkersL) :- findall(D,tarefa(_,_,D,_),DurationL),
+							findall(W,tarefa(_,_,_,W),WorkersL).
+
+%finds the days upper bound
+max_days([],0).
+max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+D.
+
 print_times([]) :- nl.
 print_times([Xi|L]) :- write(Xi), write(" "), print_times(L).
 
@@ -43,7 +47,8 @@ find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
 	prec_constrs(Tasks,CTasks,Finish),
 	cumulative(CTasks,DurationL, WorkersL, WorkersMin),
 	make_different(CTasks,STasksL),
-	search(CTasks,0,first_fail,indomain_min,complete,[]).
+	search(CTasks,0,first_fail,indomain_min,complete,[]),
+	writeln(CTasks).
 
 make_different([],[]).
 make_different([Xi|L], [_|OtherL]) :- get_bounds(Xi, LB, UB), LB=UB, make_different(L,OtherL).
@@ -125,11 +130,3 @@ prec_constrs_([J|RTSegs],Datas,DataI,Di) :-
 %Selects element in the position T on a list. (CurrentPosition,T,List,ElementAtTPosition)
 selec_elemento(T,T,[I|_],I) :- !.
 selec_elemento(T0,T,[_|R],I) :-  T0n is T0+1, selec_elemento(T0n,T,R,I).
-
-%finds the days upper bound
-max_days([],0).
-max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+D.
-
-%finds the workers upper bound
-max_workers([],0).
-max_workers([T|LTasks],Sum) :- tarefa(T,_,_,W), max_workers(LTasks,Sum2), Sum is Sum2+W.
