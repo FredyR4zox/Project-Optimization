@@ -7,23 +7,18 @@
 
 using namespace std;
 
-int CPM(Task* tasks[], int nTasks, int ES[], int prec[]){
+int CPM_ES(Task* tasks[], int nTasks, int ES[], int prec[]){
     int entStep[nTasks+2], minDur = -1, vf = 0;
     queue<int> q;
 
     for(int i=0; i<=nTasks+1; i++){
         ES[i] = 0;
         prec[i] = 0;
-        entStep[i] = 0;
-    }
-    prec[nTasks+1] = -1;
-
-    for(int i=0; i<=nTasks+1; i++)
         entStep[i] = tasks[i]->getNumberOfPrecedings();
-
-    for(int i=0; i<=nTasks+1; i++)
         if(entStep[i] == 0)
             q.push(i);
+    }
+    prec[nTasks+1] = -1;
 
     while(!q.empty()){
         int v = q.front();
@@ -45,6 +40,34 @@ int CPM(Task* tasks[], int nTasks, int ES[], int prec[]){
     return minDur;
 }
 
+void CPM_LF(Task* tasks[], int nTasks, int LF[], int minDur){
+    int entStep[nTasks+2];
+    queue<int> q;
+
+    for(int i=0; i<=nTasks+1; i++){
+        LF[i] = minDur;
+        entStep[i] = tasks[i]->getChildren().size();
+        if(entStep[i] == 0)
+            q.push(i);
+    }
+
+    while(!q.empty()){
+        int v = q.front();
+        q.pop();
+
+        for(int w=0; w<=nTasks+1; w++){
+            vector<int> children = tasks[w]->getChildren();
+            if(find(children.begin(), children.end(), v) != children.end()){
+                if(LF[w] > LF[v] - tasks[v]->getDuration())
+                    LF[w] = LF[v] - tasks[v]->getDuration();
+                entStep[w]--;
+                if(entStep[w] == 0)
+                    q.push(w);
+            }
+        }
+    }
+}
+
 int minWorkers(Task* tasks[], int nTasks, int* ES){
     int nWorkers = 0, maxWorkers = 0;
 
@@ -59,6 +82,8 @@ int minWorkers(Task* tasks[], int nTasks, int* ES){
     not needed anymore (positive/negative integer) */
     multiset<pair<int, int>, decltype(comp)> time(comp);
     for(int i=0; i<=nTasks+1; i++){
+        if(ES[i] == -1)
+            continue;
         time.insert(make_pair(ES[i], tasks[i]->getNWorkers()));
         //printf("boas %d\n", tasks[i]->getNWorkers());
         time.insert(make_pair(ES[i]+tasks[i]->getDuration(), -tasks[i]->getNWorkers()));
@@ -76,17 +101,50 @@ int minWorkers(Task* tasks[], int nTasks, int* ES){
     return maxWorkers;
 }
 
+int minCriticalWorkers(Task* tasks[], int nTasks, int* ES, int* LS){
+    int nWorkers = 0, maxWorkers = 0;
 
-void calculateLS(Task* tasks[], int nTasks, int* ES, int* LS, int* prec){
+    auto comp = [](const pair<int, int>& a, const pair<int, int>& b) -> bool {
+        // If they have the same time, put first the negatives (end of a task)
+        if(a.first == b.first)
+            return a.second < b.second;
+        return a.first < b.first;
+    };
+    /* This multiset's pair first value will be the start time or end time of a task and
+    the second value will be the number of workers needed or the number of workers
+    not needed anymore (positive/negative integer) */
+    multiset<pair<int, int>, decltype(comp)> time(comp);
     for(int i=0; i<=nTasks+1; i++){
-        LS[i] = ES[i];
-        for(int j=0; j<=nTasks+1; j++)
-            if(prec[j] == i)
-                LS[i] = ES[j];
+        if(ES[i] == -1 || ES[i] != LS[i])
+            continue;
+        time.insert(make_pair(ES[i], tasks[i]->getNWorkers()));
+        //printf("boas %d\n", tasks[i]->getNWorkers());
+        time.insert(make_pair(ES[i]+tasks[i]->getDuration(), -tasks[i]->getNWorkers()));
     }
+
+    for(pair<int, int> p : time){
+        //printf("removed %d %d\n", p.first, p.second);
+        nWorkers += p.second;
+        //printf("nWorkers %d\n", nWorkers);
+        if(nWorkers > maxWorkers)
+            maxWorkers = nWorkers;
+    }
+
+    //printf("aaa %d\n", nWorkers);
+    return maxWorkers;
 }
 
-void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, int* prec, vector<int> entStep, int* start, queue<int> q, int* bestStart, int* bestNWorkers){
+auto pqComp = [](const pair<int, int>& a, const pair<int, int>& b) -> bool {
+    // If they have the same time, put first the negatives (end of a task)
+    return a.second < b.second;
+};
+
+void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* start, int* bestStart, int* bestNWorkers){
+    int n = minWorkers(tasks, nTasks, start);
+    if(n > *bestNWorkers)
+        return;
+
+    /*
     for(int i=0; i<=nTasks+1; i++){
         vector<int> c = tasks[i]->getChildren();
         if(find(c.begin(), c.end(), task) != c.end()){
@@ -99,14 +157,16 @@ void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, int* prec, vecto
             }
         }
     }
+    */
 
-    if(q.empty()){
+    if(slack.empty()){
         for(int i=ES[task]; i<=LS[task]; i++){
             start[task] = i;
+            /*
             printf("[");
             for(int j=0; j<nTasks+1; j++)
                 printf("%d, ", start[j]);
-            printf("%d]\n", start[nTasks+1]);
+            printf("%d]\n", start[nTasks+1]);*/
             int minW = minWorkers(tasks, nTasks, start);
             if(minW < *bestNWorkers){
                 *bestNWorkers = minW;
@@ -115,25 +175,28 @@ void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, int* prec, vecto
             }
         }
 
+        start[task] = -1;
+
         return;
     }
 
-    int v = q.front(), min = ES[nTasks+1];
-    q.pop();
+    int v = slack.top().first, min = LS[task];
+    slack.pop();
 
     vector<int> children = tasks[task]->getChildren();
     for(int id : children)
-        if(min > start[id])
-            min = start[id];
+        if(start[id] != -1 && min > start[id] - tasks[task]->getDuration())
+            min = start[id] - tasks[task]->getDuration();
 
     //printf("analizing %d\n", task);
     //printf("v = %d\n", v);
     for(int i=ES[task]; i<=min; i++){
         start[task] = i;
-        DFS(tasks, nTasks, v, ES, LS, prec, entStep, start, q, bestStart, bestNWorkers);
+        DFS(tasks, nTasks, v, ES, LS, slack, start, bestStart, bestNWorkers);
     }
+    start[task] = -1;
+    slack.push(make_pair(task, LS[task] - ES[task]));
 }
-
 
 int main(){
     int nTasks, id, duration, numberOfPrecedings, preceding, nWorkers;
@@ -185,26 +248,34 @@ int main(){
     }
     */
 
-    int ES[nTasks+2], LS[nTasks+2], prec[nTasks+2], start[nTasks+2];
+    int ES[nTasks+2], LF[nTasks+2], LS[nTasks+2], prec[nTasks+2], start[nTasks+2];
 
-    int minDur = CPM(tasks, nTasks, ES, prec);
-//    vector<int> EF = ES;
-//   for(int i=0; i<=nTasks+1; i++)
-//        EF[i] = ES[i] + tasks[i]->getDuration();
-//        printf("ES[%d] = %d\n", i, ES[i]);
+    int minDur = CPM_ES(tasks, nTasks, ES, prec);
+    CPM_LF(tasks, nTasks, LF, minDur);
+
+    for(int i=0; i<=nTasks+1; i++)
+        LS[i] = LF[i]-tasks[i]->getDuration();
+
+    int bestNWorkers = minWorkers(tasks, nTasks, ES);
+    int criticalNWorkers = minCriticalWorkers(tasks, nTasks, ES, LS);
+
+    for(int i=0; i<=nTasks+1; i++)
+        printf("%d: ES = %d, LS = %d\n", i, ES[i], LS[i]);
 
     printf("minDur %d %d\n", ES[nTasks+1], minDur);
-    printf("minWorkers %d\n", minWorkers(tasks, nTasks, ES));
+    printf("minWorkers %d\n", bestNWorkers);
+    printf("minCriticalWorkers %d\n", criticalNWorkers);
 
-    calculateLS(tasks, nTasks, ES, LS, prec);
 
-
-    int bestStart[nTasks+2], bestNWorkers;
+    int bestStart[nTasks+2];
+    /*
     vector<int> entStep;
     //entStep.reserve(nTasks+2);
 
+
     queue<int> q;
     for(int i=0; i<=nTasks+1; i++){
+        start[i] = -1;
         entStep.push_back(tasks[i]->getChildren().size());
         if(entStep[i] == 0)
             q.push(i);
@@ -212,8 +283,21 @@ int main(){
 
     int task = q.front();
     q.pop();
+    */
 
-    DFS(tasks, nTasks, task, ES, LS, prec, entStep, start, q, bestStart, &bestNWorkers);
+    priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)> slack(pqComp);
+    for(int i=0; i<=nTasks+1; i++){
+        start[i] = -1;
+        if(ES[i] == LS[i])
+            start[i] = ES[i];
+        else
+            slack.push(make_pair(i, LS[i] - ES[i]));
+    }
+
+    int task = slack.top().first;
+    slack.pop();
+
+    DFS(tasks, nTasks, task, ES, LS, slack, start, bestStart, &bestNWorkers);
 
     printf("%d\n", bestNWorkers);
 
