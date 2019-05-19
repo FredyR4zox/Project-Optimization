@@ -16,4 +16,4 @@ intervalo(10,13,5,6).
 
 prazo(21).
 
-calendario([d(DiaMes,Mes,DiaSemana)])
+calendario([d(22,4,2),d(23,4,3),d(24,4,4),d(26,4,6),d(29,4,2),d(30,4,3),d(1,5,4),d(2,5,5),d(3,5,6),d(10,5,6)]).

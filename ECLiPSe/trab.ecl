@@ -2,7 +2,6 @@
 :- lib(ic_cumulative).
 :- lib(branch_and_bound).
 
-
 :- dynamic(getGoalCount/1).
 
 % tarefa(ID,LPrecs,Dur,NTrabs)
@@ -21,8 +20,7 @@ print_times([Xi|L]) :- write(Xi), write(" "), print_times(L).
 % Determinar o numero minimo de dias (algoritmo do caminho critico) e depois atribuir o numero de trabalhadores necessarios para esses mesmos dias
 project(File) :- 
 	compile(File), 
-	read_data_base(Tasks), sort(Tasks, OTasks),
-	get_constraints(DurationL,WorkersL),
+	read_data_base(Tasks), sort(Tasks, OTasks), get_constraints(DurationL,WorkersL),
 	get_min_days(OTasks,ESTasksL,Finish),	
 	write("Number of days: "), writeln(Finish),
 	order_information(OTasks,ESTasksL,OrderedTasks,OrderedFinish),
@@ -51,7 +49,7 @@ count(Goal,Count) :-
     setGoalCount(0),
     call(Goal),
     getGoalCount(Count), 
-    ((Count > 2, !, true); (incGoalCount(1), fail)).
+    ((Count >= 2, !, true); (incGoalCount(1), fail)).
 count(_,Count) :-
     getGoalCount(Count).
 
