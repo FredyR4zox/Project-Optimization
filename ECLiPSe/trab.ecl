@@ -2,6 +2,9 @@
 :- lib(ic_cumulative).
 :- lib(branch_and_bound).
 
+
+:- dynamic(getGoalCount/1).
+
 % tarefa(ID,LPrecs,Dur,NTrabs)
 read_data_base(Tasks) :- findall(T,tarefa(T,_,_,_),Tasks).
 
@@ -35,10 +38,8 @@ project(File) :-
 	minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin),
 	write("Min number of Workers: "), writeln(WorkersMin), nl,
 	writeln("Start Times for Min Workers: "), print_times(STasksL),
-	%findall(X, find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, X), Count),
-	%length(C, Count)
-	(find_another_sol(OTasks,DurationL,WorkersL, Finish, WorkersMin, STasksL), writeln("Existem solucoes alternativas"), !;
-	writeln("Solucao unica")).
+	count(find_another_sol(OTasks,DurationL,WorkersL, Finish, WorkersMin), Count),
+	(Count > 1, writeln("Existem solucoes alternativas"), !; writeln("Solucao unica")).
 
 % Pesquisa para as atividades nao criticas de modo a minimizar o numero de trabalhadores
 minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-
@@ -46,12 +47,30 @@ minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin
 	cumulative(STasksL,DurationL,WorkersL,WorkersMin),
 	minimize(search([WorkersMin|STasksL],0,first_fail,indomain_min,complete,[]), WorkersMin).
 
-find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin, STasksL) :-
+count(Goal,Count) :-
+    setGoalCount(0),
+    call(Goal),
+    getGoalCount(Count), 
+    ((Count > 2, !, true); (incGoalCount(1), fail)).
+count(_,Count) :-
+    getGoalCount(Count).
+
+setGoalCount(_) :-
+    retract(getGoalCount(_)),
+    fail.
+setGoalCount(X) :-
+    assert(getGoalCount(X)).
+
+incGoalCount(Y) :-
+    retract(getGoalCount(X)),
+    !,
+    Z is X + Y, assert(getGoalCount(Z)).
+
+find_another_sol(Tasks,DurationL,WorkersL, Finish, WorkersMin) :-
 	length(Tasks,NTasks), length(CTasks, NTasks),
 	CTasks#::0..Finish,
 	prec_constrs(Tasks,CTasks,Finish),
 	cumulative(CTasks,DurationL, WorkersL, WorkersMin),
-	make_different(CTasks,STasksL),
 	search(CTasks,0,first_fail,indomain_min,complete,[]).
 
 make_different([],[]).
@@ -102,7 +121,7 @@ get_min_days(Tasks,ESTasksL,Finish) :-
 	length(Tasks,NTasks), length(ESTasksL, NTasks),
 	max_days(Tasks, MaxD), ESTasksL#::0..MaxD, Finish#::0..MaxD,
 	prec_constrs(Tasks,ESTasksL,Finish),
-	branch_and_bound:minimize(labeling([Finish|ESTasksL]),Finish).
+	minimize(labeling([Finish|ESTasksL]),Finish).
 
 build_index_list([],[],[]).
 build_index_list([T|LT],[Di|L],[(Di,T)|LR]) :- build_index_list(LT,L,LR).
