@@ -226,7 +226,7 @@ void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, priority_queue<p
     slack.push(make_pair(v, LS[v] - ES[v]));
 }
 
-void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, bool* points, int* start, int* bestStart, int* bestNWorkers){
+void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* points, int* start, int* bestStart, int* bestNWorkers){
     int n = minWorkers(tasks, nTasks, start, minDur);
     if(n > *bestNWorkers)
         return;
@@ -248,38 +248,58 @@ void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int m
 
     int max = LS[task];
     vector<int> children = tasks[task]->getChildren();
-    for(int id : children)
-        if(start[id] != -1 && max > start[id] - tasks[task]->getDuration())
-            max = start[id] - tasks[task]->getDuration();
+    set<int> notAllowed;
+    for(int id : children){
+        // if(start[id] != -1 && max > start[id] - tasks[task]->getDuration())
+        //     max = start[id] - tasks[task]->getDuration();
+        if(start[id] != -1){
+            int test = start[id] - tasks[task]->getDuration();
+            for(int i=ES[task]; i<=LS[task]; i++)
+                if(i > test)
+                    notAllowed.insert(i);
+        }
+    }
 
     if(slack.empty()){
-        start[task] = ES[task];
-        int minW = minWorkers(tasks, nTasks, start, minDur);
-        if(minW < *bestNWorkers){
-            *bestNWorkers = minW;
-            for(int j=0; j<=nTasks+1; j++)
-                bestStart[j] = start[j];
-        }
+        for(int i=ES[task]; i<=LS[task]; i++){
+            if(notAllowed.find(i) != notAllowed.end())
+                continue;
 
-        for(int i=ES[task]+1; i<max; i++){
-            if(points[i]){
-                start[task] = i;
-                minW = minWorkers(tasks, nTasks, start, minDur);
-                if(minW < *bestNWorkers){
-                    *bestNWorkers = minW;
-                    for(int j=0; j<=nTasks+1; j++)
-                        bestStart[j] = start[j];
-                }
+            start[task] = i;
+            int minW = minWorkers(tasks, nTasks, start, minDur);
+            if(minW < *bestNWorkers){
+                *bestNWorkers = minW;
+                for(int j=0; j<=nTasks+1; j++)
+                    bestStart[j] = start[j];
             }
         }
-
-        start[task] = max;
-        minW = minWorkers(tasks, nTasks, start, minDur);
-        if(minW < *bestNWorkers){
-            *bestNWorkers = minW;
-            for(int j=0; j<=nTasks+1; j++)
-                bestStart[j] = start[j];
-        }
+        // start[task] = ES[task];
+        // int minW = minWorkers(tasks, nTasks, start, minDur);
+        // if(minW < *bestNWorkers){
+        //     *bestNWorkers = minW;
+        //     for(int j=0; j<=nTasks+1; j++)
+        //         bestStart[j] = start[j];
+        // }
+        //
+        // for(int i=ES[task]+1; i<max; i++){
+        //     if(points[i]){
+        //         start[task] = i;
+        //         minW = minWorkers(tasks, nTasks, start, minDur);
+        //         if(minW < *bestNWorkers){
+        //             *bestNWorkers = minW;
+        //             for(int j=0; j<=nTasks+1; j++)
+        //                 bestStart[j] = start[j];
+        //         }
+        //     }
+        // }
+        //
+        // start[task] = max;
+        // minW = minWorkers(tasks, nTasks, start, minDur);
+        // if(minW < *bestNWorkers){
+        //     *bestNWorkers = minW;
+        //     for(int j=0; j<=nTasks+1; j++)
+        //         bestStart[j] = start[j];
+        // }
 
         start[task] = -1;
 
@@ -293,33 +313,41 @@ void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int m
 
     //printf("analizing %d\n", task);
     //printf("v = %d\n", v);
-    start[task] = ES[task];
-    bool alreadyTrue = points[ES[task]], alreadyTrue2 = points[ES[task]+tasks[task]->getDuration()];
-    points[ES[task]] = true;
-    points[ES[task]+tasks[task]->getDuration()] = true;
-    branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
-    points[ES[task]] = alreadyTrue;
-    points[ES[task]+tasks[task]->getDuration()] = alreadyTrue2;
+    // start[task] = ES[task];
+    // bool alreadyTrue = points[ES[task]], alreadyTrue2 = points[ES[task]+tasks[task]->getDuration()];
+    // points[ES[task]] = true;
+    // points[ES[task]+tasks[task]->getDuration()] = true;
+    // branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
+    // points[ES[task]] = alreadyTrue;
+    // points[ES[task]+tasks[task]->getDuration()] = alreadyTrue2;
+    //
+    // for(int i=ES[task]+1; i<min; i++){
+    //     if(points[i]){
+    //         start[task] = ES[task];
+    //         alreadyTrue = points[ES[task]], alreadyTrue2 = points[ES[task]+tasks[task]->getDuration()];
+    //         points[ES[task]] = true;
+    //         points[ES[task]+tasks[task]->getDuration()] = true;
+    //         branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
+    //         points[ES[task]] = alreadyTrue;
+    //         points[ES[task]+tasks[task]->getDuration()] = alreadyTrue2;
+    //     }
+    // }
+    //
+    // start[task] = LS[task];
+    // alreadyTrue = points[ES[task]], alreadyTrue2 = points[ES[task]+tasks[task]->getDuration()];
+    // points[ES[task]] = true;
+    // points[ES[task]+tasks[task]->getDuration()] = true;
+    // branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
+    // points[ES[task]] = alreadyTrue;
+    // points[ES[task]+tasks[task]->getDuration()] = alreadyTrue2;
 
-    for(int i=ES[task]+1; i<min; i++){
-        if(points[i]){
-            start[task] = ES[task];
-            alreadyTrue = points[ES[task]], alreadyTrue2 = points[ES[task]+tasks[task]->getDuration()];
-            points[ES[task]] = true;
-            points[ES[task]+tasks[task]->getDuration()] = true;
-            branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
-            points[ES[task]] = alreadyTrue;
-            points[ES[task]+tasks[task]->getDuration()] = alreadyTrue2;
-        }
+    for(int i=ES[task]; i<=LS[task]; i++){
+        if(notAllowed.find(i) != notAllowed.end())
+            continue;
+
+        start[task] = i;
+        branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
     }
-
-    start[task] = LS[task];
-    alreadyTrue = points[ES[task]], alreadyTrue2 = points[ES[task]+tasks[task]->getDuration()];
-    points[ES[task]] = true;
-    points[ES[task]+tasks[task]->getDuration()] = true;
-    branchAndBound(tasks, nTasks, v, ES, LS, minDur, slack, points, start, bestStart, bestNWorkers);
-    points[ES[task]] = alreadyTrue;
-    points[ES[task]+tasks[task]->getDuration()] = alreadyTrue2;
 
 
     start[task] = -1;
@@ -447,4 +475,3 @@ int main(){
 
     return 0;
 }
-
