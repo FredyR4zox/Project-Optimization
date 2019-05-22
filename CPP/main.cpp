@@ -82,7 +82,7 @@ int minWorkers(Task* tasks[], int nTasks, int* ES, int minDur){
         points[ES[i] + tasks[i]->getDuration()] -= tasks[i]->getNWorkers();
     }
 
-    for(int i=0; i<minDur+1; i++){
+    for(int i=0; i<=minDur; i++){
         nWorkers += points[i];
         //printf("nWorkers %d\n", nWorkers);
         if(nWorkers > maxWorkers)
@@ -226,7 +226,7 @@ void DFS(Task* tasks[], int nTasks, int task, int* ES, int* LS, priority_queue<p
     slack.push(make_pair(v, LS[v] - ES[v]));
 }
 
-void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* points, int* start, int* bestStart, int* bestNWorkers){
+void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, bool* points, int* start, int* bestStart, int* bestNWorkers){
     int n = minWorkers(tasks, nTasks, start, minDur);
     if(n > *bestNWorkers)
         return;
@@ -355,6 +355,170 @@ void branchAndBound(Task* tasks[], int nTasks, int task, int* ES, int* LS, int m
     slack.push(make_pair(v, LS[v] - ES[v]));
 }
 
+void branchAndBound2(Task* tasks[], int nTasks, int task, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* points, int* start, int maxNWorkers, int* bestStart, int* bestNWorkers){
+
+    vector<int> children = tasks[task]->getChildren();
+    set<int> notAllowed;
+    int duration = tasks[task]->getDuration(), taskWorkers = tasks[task]->getNWorkers(), test;
+
+    for(int id : children){
+        if(start[id] != -1){
+            test = start[id] - duration;
+            for(int i=ES[task]; i<=LS[task]; i++)
+                if(i > test)
+                    notAllowed.insert(i);
+        }
+    }
+
+    if(slack.empty()){
+        for(int i=ES[task]; i<=LS[task]; i++){
+            if(notAllowed.find(i) != notAllowed.end())
+                continue;
+
+            start[task] = i;
+            test = i+duration;
+            for(int j=i; j<test; j++){
+                points[j] += taskWorkers;
+                if(points[j] > maxNWorkers)
+                    maxNWorkers = points[j];
+            }
+
+            //printf("found with %d, best %d\n", maxNWorkers, *bestNWorkers);
+
+            if(maxNWorkers < *bestNWorkers){
+                *bestNWorkers = maxNWorkers;
+                printf("mehhhh\n");
+                for(int j=0; j<=nTasks+1; j++)
+                    bestStart[j] = start[j];
+            }
+
+            for(int j=i; j<test; j++)
+                points[j] -= taskWorkers;
+        }
+
+        start[task] = -1;
+
+        return;
+    }
+
+    int v = slack.top().first;
+    slack.pop();
+
+    int oldMaxNWorkers = maxNWorkers;
+    for(int i=ES[task]; i<=LS[task]; i++){
+        maxNWorkers = oldMaxNWorkers;
+        if(notAllowed.find(i) != notAllowed.end())
+            continue;
+
+        start[task] = i;
+        test = i+duration;
+        for(int j=i; j<test; j++){
+            points[j] += taskWorkers;
+            if(points[j] > maxNWorkers)
+                maxNWorkers = points[j];
+        }
+
+        if(maxNWorkers > *bestNWorkers){
+            //printf("cut\n");
+            for(int j=i; j<test; j++)
+                points[j] -= taskWorkers;
+
+            continue;
+        }
+
+        branchAndBound2(tasks, nTasks, v, ES, LS, minDur, slack, points, start, maxNWorkers, bestStart, bestNWorkers);
+        for(int j=i; j<test; j++)
+            points[j] -= taskWorkers;
+    }
+
+
+    start[task] = -1;
+    slack.push(make_pair(v, LS[v] - ES[v]));
+}
+
+void branchAndBound3(Task* tasks[], int nTasks, int task, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* points, int* start, int maxNWorkers, int* bestStart, int* bestNWorkers, int* restart){
+
+    vector<int> children = tasks[task]->getChildren();
+    set<int> notAllowed;
+    bool notAllowed2[minDur+1] = {false};
+    int duration = tasks[task]->getDuration(), taskWorkers = tasks[task]->getNWorkers(), test;
+
+    for(int id : children){
+        if(start[id] != -1){
+            test = start[id] - duration;
+            for(int i=ES[task]; i<=LS[task]; i++)
+                if(i > test)
+                    notAllowed2[i] = true;
+        }
+    }
+
+    if(slack.empty()){
+        for(int i=ES[task]; i<=LS[task]; i++){
+            if(notAllowed2[i])
+                continue;
+
+            start[task] = i;
+            test = i+duration;
+            for(int j=i; j<test; j++){
+                points[j] += taskWorkers;
+                if(points[j] > maxNWorkers)
+                    maxNWorkers = points[j];
+            }
+
+            //printf("found with %d, best %d\n", maxNWorkers, *bestNWorkers);
+
+            if(maxNWorkers < *bestNWorkers){
+                *bestNWorkers = maxNWorkers;
+                printf("mehhhh\n");
+                for(int j=0; j<=nTasks+1; j++)
+                    bestStart[j] = start[j];
+            }
+
+            for(int j=i; j<test; j++)
+                points[j] -= taskWorkers;
+        }
+
+        start[task] = -1;
+
+        return;
+    }
+
+    int v = slack.top().first;
+    slack.pop();
+
+    int oldMaxNWorkers = maxNWorkers;
+    for(int i=ES[task]; i<=LS[task]; i++){
+        maxNWorkers = oldMaxNWorkers;
+        if(notAllowed.find(i) != notAllowed.end())
+            continue;
+
+        start[task] = i;
+        test = i+duration;
+        for(int j=i; j<test; j++){
+            points[j] += taskWorkers;
+            if(points[j] > maxNWorkers)
+                maxNWorkers = points[j];
+        }
+
+        if(maxNWorkers > *bestNWorkers){
+            //printf("cut\n");
+            for(int j=i; j<test; j++)
+                points[j] -= taskWorkers;
+
+            continue;
+        }
+
+        branchAndBound3(tasks, nTasks, v, ES, LS, minDur, slack, points, start, maxNWorkers, bestStart, bestNWorkers);
+
+        for(int j=i; j<test; j++)
+            points[j] -= taskWorkers;
+    }
+
+
+    start[task] = -1;
+    slack.push(make_pair(v, LS[v] - ES[v] - tasks[v]->getDuration()));
+}
+
 int main(){
     int nTasks, id, duration, numberOfPrecedings, preceding, nWorkers;
 
@@ -444,17 +608,21 @@ int main(){
     int task = q.front();
     q.pop();
     */
+    int points2[minDur+1];
+    for(int i=0; i<=minDur; i++)
+        points2[i] = 0;
 
     priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)> slack(pqComp);
     for(int i=0; i<=nTasks+1; i++){
         start[i] = -1;
         if(ES[i] == LS[i]){
             start[i] = ES[i];
-            points[ES[i]] = true;
-            points[ES[i]+tasks[i]->getDuration()] = true;
+
+            for(int j=ES[i]; j<ES[i]+tasks[i]->getDuration(); j++)
+                points2[j] += tasks[i]->getNWorkers();
         }
         else{
-            slack.push(make_pair(i, LS[i] - ES[i]));
+            slack.push(make_pair(i, LS[i] - ES[i] - tasks[i]->getDuration()));
             //printf("insert %d\n", LS[i] - ES[i]);
         }
     }
@@ -463,7 +631,7 @@ int main(){
     //printf("poped %d\n", slack.top().second);
     slack.pop();
 
-    branchAndBound(tasks, nTasks, task, ES, LS, minDur, slack, points, start, bestStart, &bestNWorkers);
+    branchAndBound3(tasks, nTasks, task, ES, LS, minDur, slack, points2, start, criticalNWorkers, bestStart, &bestNWorkers);
 
     for(int i=0; i<=nTasks+1; i++)
         printf("%d = %d\n", i, bestStart[i]);
