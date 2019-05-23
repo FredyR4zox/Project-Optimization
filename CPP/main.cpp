@@ -75,13 +75,13 @@ int calculateWorkers(Task* tasks[], int nTasks, int* ES, int minDur){
     for(int i=0; i<=nTasks+1; i++){
         if(ES[i] == -1)
             continue;
+
         points[ES[i]] += tasks[i]->getNWorkers();
         points[ES[i] + tasks[i]->getDuration()] -= tasks[i]->getNWorkers();
     }
 
     for(int i=0; i<=minDur; i++){
         nWorkers += points[i];
-        //printf("nWorkers %d\n", nWorkers);
         if(nWorkers > maxWorkers)
             maxWorkers = nWorkers;
     }
@@ -95,13 +95,13 @@ int calculateCriticalWorkers(Task* tasks[], int nTasks, int* ES, int* LS, int mi
     for(int i=0; i<=nTasks+1; i++){
         if(ES[i] == -1 || ES[i] != LS[i])
             continue;
+
         points[ES[i]] += tasks[i]->getNWorkers();
         points[ES[i] + tasks[i]->getDuration()] -= tasks[i]->getNWorkers();
     }
 
     for(int i=0; i<=minDur; i++){
         nWorkers += points[i];
-        //printf("nWorkers %d\n", nWorkers);
         if(nWorkers > maxWorkers)
             maxWorkers = nWorkers;
     }
@@ -120,16 +120,12 @@ auto pqComp = [](const pair<int, int>& a, const pair<int, int>& b) -> bool {
 bool DFS(int maxWorkers, Task* tasks[], int nTasks, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* points, int* start, int curMaxWorkers, int* bestStart){
     if(slack.empty()){
         copy(start, start+nTasks+2, bestStart);
-        // for(int j=0; j<=nTasks+1; j++)
-        //     bestStart[j] = start[j];
 
         return true;
     }
 
     int task = slack.top().first;
     slack.pop();
-
-    // printf("analizing %d\n", task);
 
     vector<int> children = tasks[task]->getChildren();
     vector<int> children2;
@@ -162,13 +158,11 @@ bool DFS(int maxWorkers, Task* tasks[], int nTasks, int* ES, int* LS, int minDur
             continue;
 
         start[task] = i;
+
         int ES2[nTasks+2], LS2[nTasks+2];
         copy(ES, ES+nTasks+2, ES2);
         copy(LS, LS+nTasks+2, LS2);
-        // for(int j=0; j<=nTasks+1; j++){
-        //     ES2[j] = ES[j];
-        //     LS2[j] = LS[j];
-        // }
+
         for(int id : children)
             if(start[id] == -1)
                 ES2[id] = max(ES2[id], i+duration);
@@ -190,8 +184,6 @@ bool DFS(int maxWorkers, Task* tasks[], int nTasks, int* ES, int* LS, int minDur
         if(curMaxWorkers > maxWorkers){
             for(int j=i; j<test; j++)
                 points[j] -= taskWorkers;
-
-            // printf("cut\n");
 
             continue;
         }
@@ -287,9 +279,6 @@ int main(){
         else
             slack.push(make_pair(i, LS[i] - ES[i] - tasks[i]->getDuration()));
     }
-
-    // for(int i=criticalWorkers; i<=esWorkers; i++)
-    //     DFS(i, tasks, nTasks, ES, LS, minDur, slack, points, start, criticalWorkers, bestStart);
 
     for(int i=criticalWorkers; i<=esWorkers; i++){
         if(DFS(i, tasks, nTasks, ES, LS, minDur, slack, points, start, criticalWorkers, bestStart)){
