@@ -23,7 +23,7 @@ project(File) :-
 	write("Min number of Workers: "), writeln(WorkersMin), nl,
 	writeln("Start Times for Min Workers: "), print_times(STasksL),
 	count(find_another_sol(OTasks,DurationL,WorkersL, Finish, WorkersMin), Count),
-	(Count > 1, writeln("Existem solucoes alternativas"), !; writeln("Solucao unica")).
+	(Count > 1, !, writeln("Existem solucoes alternativas"); writeln("Solucao unica")).
 
 % Gets the minimum number of workers for the given finish date.
 minimize_workers(STasksL, DurationL, WorkersL, WorkersN, WorkersCrit, WorkersMin) :-

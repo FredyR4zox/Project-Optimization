@@ -1,24 +1,24 @@
-tarefa(1,[8,9],3,[(X,2)],0).
-tarefa(2,[11],4,[(Y,2)],0).
-tarefa(3,[5,6,7],3,[(X,1),(Y,1)],0).
-tarefa(4,[],3,[(Z,1)],0).
-tarefa(5,[10],2,[(X,1)],0).
-tarefa(6,[8,9],1,[(Y,1),(X,1),(Z,1)],0).
-tarefa(7,[12,13],2,[(X,1)],0).
-tarefa(8,[10],2,[(Z,1)],0).
-tarefa(9,[],3,[(Y,1)],0).
-tarefa(10,[],2,[(X,1),(Y,1)],0).
-tarefa(11,[8,9],2,[(X,1)],0).
-tarefa(12,[11],1,[(X,1)],0).
-tarefa(13,[10],4,[(Z,2)],0).
+tarefa(1,[8,9],3,[(x,2)],0).
+tarefa(2,[11],4,[(y,2)],0).
+tarefa(3,[5,6,7],3,[(x,1),(y,1)],0).
+tarefa(4,[],3,[(z,1)],0).
+tarefa(5,[10],2,[(x,1)],0).
+tarefa(6,[8,9],1,[(y,1),(x,1),(z,1)],0).
+tarefa(7,[12,13],2,[(x,1)],0).
+tarefa(8,[10],2,[(z,1)],0).
+tarefa(9,[],3,[(y,1)],0).
+tarefa(10,[],2,[(x,1),(y,1)],0).
+tarefa(11,[8,9],2,[(x,1)],0).
+tarefa(12,[11],1,[(x,1)],0).
+tarefa(13,[10],4,[(z,2)],0).
 
-trabalhador(1,[X,Y,Z]).
-trabalhador(2,[X]).
-trabalhador(3,[Y]).
-trabalhador(4,[Z]).
-trabalhador(5,[Y,Z]).
-trabalhador(6,[X,Y]).
-trabalhador(7,[X,Z]).
+trabalhador(1,[x,y,z]).
+trabalhador(2,[x]).
+trabalhador(3,[y]).
+trabalhador(4,[z]).
+trabalhador(5,[y,z]).
+trabalhador(6,[x,y]).
+trabalhador(7,[x,z]).
 
 prazo(21).
 
