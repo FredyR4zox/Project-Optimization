@@ -315,7 +315,7 @@ int main(){
     printf("%d\n", bestStart[nTasks]);
 
     if(DFS(esWorkers, tasks, nTasks, ES, LS, minDur, slack, points, start, criticalWorkers, bestStart))
-        printf("There are alternative optimum solutions\n");
+        printf("There are alternative optimal solutions\n");
 
     for(Task* t : tasks)
         delete t;
