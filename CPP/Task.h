@@ -23,7 +23,7 @@ public:
 
     int getID();
     int getNumberOfPrecedings();
-    vector<int> getChildren();
+    vector<int>& getChildren();
     int getDuration();
     int getNWorkers();
 };
