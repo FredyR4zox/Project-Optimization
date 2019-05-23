@@ -119,9 +119,14 @@ auto pqComp = [](const pair<int, int>& a, const pair<int, int>& b) -> bool {
 
 bool DFS(int maxWorkers, Task* tasks[], int nTasks, int* ES, int* LS, int minDur, priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)>& slack, int* points, int* start, int curMaxWorkers, int* bestStart){
     if(slack.empty()){
-        copy(start, start+nTasks+2, bestStart);
+        for(int i=0; i<=nTasks+1; i++){
+            if(start[i] != bestStart[i]){
+                copy(start, start+nTasks+2, bestStart);
+                return true;
+            }
+        }
 
-        return true;
+        return false;
     }
 
     int task = slack.top().first;
@@ -256,17 +261,30 @@ int main(){
     int esWorkers = calculateWorkers(tasks, nTasks, ES, minDur);
     int criticalWorkers = calculateCriticalWorkers(tasks, nTasks, ES, LS, minDur);
 
-    for(int i=0; i<=nTasks+1; i++)
-        printf("%d: ES = %d, LS = %d, dur = %d\n", i, ES[i], LS[i], tasks[i]->getDuration());
+    /***********
+    PROBLEM 1.1
+    ***********/
+    printf("Found a solution with cost %d\n", minDur);
+    printf("Number of days: %d\n\n\n", minDur);
 
-    printf("minDur %d %d\n", ES[nTasks+1], minDur);
-    printf("minWorkers %d\n", esWorkers);
-    printf("minCriticalWorkers %d\n", criticalWorkers);
+    /***********
+    PROBLEM 1.2
+    ***********/
+    printf("Number of Workers for ES: %d\n", esWorkers);
+    printf("Start Times for ES:\n");
+    for(int i=1; i<nTasks; i++)
+        printf("%d ", ES[i]);
+    printf("%d\n\n\n", ES[nTasks]);
+
+    /***********
+    PROBLEM 1.3
+    ***********/
+    printf("Number of Workers for crit:  %d\n\n\n", criticalWorkers);
 
 
     int start[nTasks+2], bestStart[nTasks+2], points[minDur+1] = { 0 };
     fill(start, start+nTasks+2, -1);
-    copy(ES, ES+nTasks+2, bestStart);
+    // copy(ES, ES+nTasks+2, bestStart);
 
     priority_queue<pair<int, int>, vector<pair<int, int> >, decltype(pqComp)> slack(pqComp);
     for(int i=0; i<=nTasks+1; i++){
@@ -280,17 +298,24 @@ int main(){
             slack.push(make_pair(i, LS[i] - ES[i] - tasks[i]->getDuration()));
     }
 
-    for(int i=criticalWorkers; i<=esWorkers; i++){
+    /***********
+    PROBLEM 1.4
+    ***********/
+    for(int i=criticalWorkers; i<esWorkers; i++){
         if(DFS(i, tasks, nTasks, ES, LS, minDur, slack, points, start, criticalWorkers, bestStart)){
             esWorkers = i;
             break;
         }
     }
 
-    for(int i=1; i<=nTasks; i++)
-        printf(" %d", bestStart[i]);
+    printf("Min number of Workers: %d\n", esWorkers);
+    printf("Start Times for Min Workers:\n");
+    for(int i=1; i<nTasks; i++)
+        printf("%d ", bestStart[i]);
+    printf("%d\n", bestStart[nTasks]);
 
-    printf("\n%d\n", esWorkers);
+    if(DFS(esWorkers, tasks, nTasks, ES, LS, minDur, slack, points, start, criticalWorkers, bestStart))
+        printf("There are alternative optimum solutions\n");
 
     for(Task* t : tasks)
         delete t;
