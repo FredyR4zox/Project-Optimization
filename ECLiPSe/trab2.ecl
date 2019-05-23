@@ -12,17 +12,15 @@ project2(File) :-
     length(Tasks,NTasks), length(Hours, NTasks),
     get_Workers(Workers), sort(Workers, OWorkers), length(Workers,NWorkers),
     specialties(Workers,ListSpecialties), length(ListSpecialties,NSpecialties),
-    Hours#::[8..11,13..16], hour_constrs(OTasks,Hours),
     length(Days, NTasks), build_calendar(Calen, DayL),
-    Days#::Calen, FinishD#::1..DayL,
-    prec_days_constrs(OTasks,Days,Hours,FinishD),
-    %interval_constrs(OTasks,Days,Hours),
-    build_matrix(NTasks,NWorkers,NSpecialties,M),
+    HL is DayL * 8,
+    Days#::Calen, FinishD#::0..HL, Hours#::0..HL,
+    prec_days_constrs(OTasks,Hours,FinishD),
+    interval_constrs(OTasks,Hours),
+    build_3d(NTasks,NWorkers,NSpecialties,M),
     workers_constrs(M, OTasks, OWorkers, ListSpecialties),
-    check_sobr(OTasks,OTasks,Days,Hours,M),
-    minimize(labeling([FinishD|Days]), FinishD),
-    labeling(M),
-    writeln(M).
+    check_sobr(OTasks,OTasks,Hours,M),
+    minimize(labeling([FinishD|Hours]), FinishD).
 
 max_days([],0).
 max_days([T|LTasks],Sum) :- tarefa(T,_,D,_), max_days(LTasks,Sum2), Sum is Sum2+D.
@@ -42,31 +40,21 @@ build_days_list(T,[T2|CalenL],[d(_,_,S)|L], D) :- D == S, Dif is 7, T2 is T + Di
 
 find_term_day([Day|_], [d(D,M,S)|_], d(D,M,S), Day).
 find_term_day([_|LCalen], [d(D,M,S)|L], d(D2,M2,S2), DayL) :- (D \= D2; M \= M2; S \= S2),
-                                            find_term_day(LCalen, L, d(D2,M2,S2), DayL).
+                                            find_term_day(LCalen, L, d(D2,M2,S2), DayL). 
 
-hour_constrs([],_).
-hour_constrs([T|RTarefas], Hours) :-
-    tarefa(T,_,Hi,_,_),
-    selec_elemento(1,T,Hours,HourI),
-    HourI + Hi #= FinishH,
-    FinishH#::[9..12,14..17],
-    hour_constrs(RTarefas, Hours). 
-
-prec_days_constrs([],_,_,_).
-prec_days_constrs([T|RTarefas],Datas,Hours,Finish) :-
+prec_days_constrs([],_,_).
+prec_days_constrs([T|RTarefas],Hours,Finish) :-
     tarefa(T,LTSegs,Hi,_,_),
-    selec_elemento(1,T,Datas,DataI),
     selec_elemento(1,T,Hours,HourI),
-    prec_days_constrs_(LTSegs,Datas,Hours,DataI,HourI,Hi),
-    DataI #=< Finish,
-    prec_days_constrs(RTarefas,Datas,Hours,Finish).
+    prec_days_constrs_(LTSegs,Hours,HourI,Hi),
+    HourI #=< Finish,
+    prec_days_constrs(RTarefas,Hours,Finish).
 
-prec_days_constrs_([],_,_,_,_,_).
-prec_days_constrs_([J|RTSegs],Datas,Hours,DataI,HourI,Hi) :-
-    selec_elemento(1,J,Datas,DataJ),
+prec_days_constrs_([],_,_,_).
+prec_days_constrs_([J|RTSegs],Hours,HourI,Hi) :-
     selec_elemento(1,J,Hours,HourJ),
-    ((DataI #= DataJ, HourI + Hi #=< HourJ) or DataI #< DataJ), 
-    prec_days_constrs_(RTSegs,Datas,Hours,DataI, HourI,Hi).
+    HourI + Hi #=< HourJ,
+    prec_days_constrs_(RTSegs,Hours,HourI,Hi).
 
 %Selects element in the position T on a list. (CurrentPosition,T,List,ElementAtTPosition)
 selec_elemento(T,T,[I|_],I) :- !.
@@ -83,13 +71,13 @@ check_membership([X|LS],SpecialtiesL,NL) :- belongs_to(X,SpecialtiesL), check_me
 belongs_to(X,[X|_]) :- !.
 belongs_to(X,[Y|L]) :- Y \= X, !, belongs_to(X,L).
 
-build_matrix(0,_,_,[]) :- !.
-build_matrix(NTasks,NWorkers,NSpecialties,[H|WMatrix]) :- length(H,NWorkers), build_matrix2(NWorkers,NSpecialties,H),
-            NTasks2 is NTasks - 1, build_matrix(NTasks2,NWorkers,NSpecialties,WMatrix).
+build_3d(0,_,_,[]) :- !.
+build_3d(NTasks,NWorkers,NSpecialties,[H|WMatrix]) :- length(H,NWorkers), build_3d2(NWorkers,NSpecialties,H),
+            NTasks2 is NTasks - 1, build_3d(NTasks2,NWorkers,NSpecialties,WMatrix).
 
-build_matrix2(0,_,[]) :- !.
-build_matrix2(NWorkers,NSpecialties,[H|SMatrix]) :- length(H,NSpecialties),
-            NWorkers2 is NWorkers - 1, build_matrix2(NWorkers2,NSpecialties,SMatrix).
+build_3d2(0,_,[]) :- !.
+build_3d2(NWorkers,NSpecialties,[H|SMatrix]) :- length(H,NSpecialties),
+            NWorkers2 is NWorkers - 1, build_3d2(NWorkers2,NSpecialties,SMatrix).
 
 workers_constrs(_,[],_,_).
 workers_constrs([TiL|TWMatrix], [T|OTasksL], OWorkers, ListSpecialties) :- tarefa(T,_,_,WL,_),
@@ -130,46 +118,39 @@ count_workers([r(_,W)|L],Sum) :- count_workers(L,Sum2), Sum is Sum2 + W.
 limit_ocurrences([]).
 limit_ocurrences([X|L]) :- atmost(1,X,1), limit_ocurrences(L).
 
-check_sobr([],_,_,_,_).
-check_sobr([T|OTasks],OTasks2,Days,Hours,M) :-
+check_sobr([],_,_,_).
+check_sobr([T|OTasks],OTasks2,Hours,M) :-
     tarefa(T,_,Hi,WL,_),
     selec_elemento(1,T,Hours,HourI),
-    selec_elemento(1,T,Days,DayI),
     selec_elemento(1,T,M,TiL),
     count_workers(WL, WorkersNI),
-    check_sobr_(OTasks2,Days,Hours, M,DayI, HourI, Hi, TiL, WorkersNI),
-    check_sobr(OTasks,OTasks2,Days,Hours,M).
+    check_sobr_(OTasks2,Hours,M,HourI, Hi, TiL, WorkersNI),
+    check_sobr(OTasks,OTasks2,Hours,M).
 
-check_sobr_([],_,_,_,_,_,_,_,_).
-check_sobr_([J|OTasks2],Days,Hours, M, DayI, HourI, Hi, TiL, WorkersNI) :-
+check_sobr_([],_,_,_,_,_,_).
+check_sobr_([J|OTasks2],Hours,M,HourI,Hi,TiL,WorkersNI) :-
     tarefa(J,_,_,WL,_),
-    selec_elemento(1,J,Hours,HourJ),
-    selec_elemento(1,J,Days,DayJ),    
+    selec_elemento(1,J,Hours,HourJ),   
     selec_elemento(1,J,M,TjL),
     count_workers(WL, WorkersNJ),
     SumW is WorkersNJ + WorkersNI,
-    DayI #= DayJ, HourJ #>= HourI, HourJ #< HourI + Hi,
+    HourJ #>= HourI, HourJ #< HourI + Hi, !,
     append(TiL,TjL,At), flatten(At,At2), occurrences(1, At2, SumW),
-    check_sobr_(OTasks2,Days,Hours, M, DayI, HourI, Hi, TiL, WorkersNI).
-check_sobr_([_|OTasks2],Days,Hours, M, DayI, HourI, Hi, TiL, WorkersNI) :- 
-    check_sobr_(OTasks2,Days,Hours, M, DayI, HourI, Hi, TiL, WorkersNI).
+    check_sobr_(OTasks2,Hours,M,HourI,Hi,TiL,WorkersNI).
+check_sobr_([_|OTasks2],Hours,M,HourI,Hi,TiL,WorkersNI) :- 
+    check_sobr_(OTasks2,Hours,M,HourI,Hi,TiL,WorkersNI).
 
-interval_constrs([],_,_).
-interval_constrs([T|RTarefas],Days,Hours) :-
+interval_constrs([],_).
+interval_constrs([T|RTarefas],Hours) :-
     findall((PrevT,Min,Max), intervalo(T,PrevT,Min,Max), IntL),
     selec_elemento(1,T,Hours,HourI),
-    selec_elemento(1,T,Days,DayI),
-    interval_constrs_(IntL,Days,Hours,DayI,HourI),
-    interval_constrs(RTarefas,Days,Hours).
+    interval_constrs_(IntL,Hours,HourI),
+    interval_constrs(RTarefas,Hours).
 
-interval_constrs_([],_,_,_,_).
-interval_constrs_([(J,Min,Max)|RTSegs],Days,Hours,DayI,HourI) :-
+interval_constrs_([],_,_).
+interval_constrs_([(J,Min,Max)|RTSegs],Hours,HourI) :-
     tarefa(J,_,Hj,_,_),
     selec_elemento(1,J,Hours,HourJ),
-    selec_elemento(1,J,Days,DayJ),
-    MinH is floor(Min / 24), MaxH is floor(Max / 24),
-    L is DayJ + MinH,
-    DayI #>= L, DayI #=< L,
-    MinL #= ((HourJ + Hj + Min) mod 24), MaxL #= ((HourJ + Hj + Max) mod 24),
-    HourI #>= HourJ + Hj + Min, HourI #=< HourJ + Hj + Max,
-    interval_constrs_(RTSegs,Days,Hours,DayI,HourI).
+    MinT is Hj + Min, MaxT is Hj + Max,
+    HourI #>= HourJ + MinT, HourI #=< HourJ + MaxT,
+    interval_constrs_(RTSegs,Hours,HourI).
