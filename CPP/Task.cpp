@@ -49,7 +49,7 @@ int Task::getNumberOfPrecedings(){
 	return this->numberOfPrecedings;
 }
 
-vector<int> Task::getChildren(){
+vector<int>& Task::getChildren(){
 	return this->children;
 }
 
