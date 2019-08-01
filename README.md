@@ -1,5 +1,6 @@
 # Project-Optimization
 Constructed mathematical models for task scheduling problems and developed programs to automatically compute a solution and optimize it using constraint programming and algorithms, comparing the two methods for solving this type of problems.
+
 The work statement and report are in Portuguese.
 
 
